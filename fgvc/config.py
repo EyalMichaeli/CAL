@@ -1,26 +1,25 @@
 ##################################################
 # Training Config
 ##################################################
-workers = 1                 # number of Dataloader workers
-epochs = 160                # number of epochs
+workers = 4                 # number of Dataloader workers
+epochs = 100              # number of epochs
 batch_size = 4             # batch size
 learning_rate = 1e-3        # initial learning rate
 
 ##################################################
 # Model Config
 ##################################################
-image_size = (448, 448)     # size of training images
-net = 'resnet101'  # feature extractor
+image_size = (224, 224)     # size of training images
+net = 'resnet50'  # feature extractor
 num_attentions = 32     # number of attention maps
 beta = 5e-2                 # param for update feature centers
 
 ##################################################
 # Dataset/Path Config
 ##################################################
-tag = 'bird'                # 'aircraft', 'bird', 'car', or 'dog'
 
 # saving directory of .ckpt models
-save_dir = './FGVC/bird/wsdan-resnet101-cal/'
+save_dir = '/mnt/raid/home/eyal_michaeli/datasets/FGVC-Aircraft/fgvc-aircraft-2013b'
 model_name = 'model.ckpt'
 log_name = 'train.log'
 

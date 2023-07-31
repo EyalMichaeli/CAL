@@ -1,3 +1,4 @@
+import logging
 import torch
 import random
 import numpy as np
@@ -59,10 +60,11 @@ class TopKAccuracyMetric(Metric):
         correct = pred.eq(target.view(1, -1).expand_as(pred))
 
         for i, k in enumerate(self.topk):
-            correct_k = correct[:k].view(-1).float().sum(0)
+            correct_k = correct[:k].reshape(-1).float().sum(0)  # Use reshape instead of view
             self.corrects[i] += correct_k.item()
 
         return self.corrects * 100. / self.num_samples
+
 
 
 ##################################
@@ -148,7 +150,7 @@ def batch_augment(images, attention_map, mode='crop', theta=0.5, padding_ratio=0
             else:
                 theta_c = theta * atten_map.max()
 
-            crop_mask = F.upsample_bilinear(atten_map, size=(imgH, imgW)) >= theta_c
+            crop_mask = F.interpolate(atten_map, size=(imgH, imgW), mode='bilinear', align_corners=False) >= theta_c
             nonzero_indices = torch.nonzero(crop_mask[0, 0, ...])
             height_min = max(int(nonzero_indices[:, 0].min().item() - padding_ratio * imgH), 0)
             height_max = min(int(nonzero_indices[:, 0].max().item() + padding_ratio * imgH), imgH)
@@ -182,16 +184,40 @@ def batch_augment(images, attention_map, mode='crop', theta=0.5, padding_ratio=0
 ##################################
 # transform in dataset
 ##################################
-def get_transform(resize, phase='train'):
+def get_transform(resize, phase='train', special_aug=None):
     if phase == 'train':
-        return transforms.Compose([
-            transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
-            transforms.RandomCrop(resize),
-            transforms.RandomHorizontalFlip(0.5),
-            transforms.ColorJitter(brightness=0.126, saturation=0.5),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
+        if special_aug == 'randaug':
+            logging.info('\nIMPORTANT: Using RandAugment\n')
+            return transforms.Compose([
+                transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
+                transforms.RandomCrop(resize),
+                transforms.RandAugment(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225]),
+            ])
+        
+        elif special_aug == 'autoaug':
+            logging.info('\nIMPORTANT: Using AutoAugment\n')
+            return transforms.Compose([
+                transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
+                transforms.RandomCrop(resize),
+                transforms.AutoAugment(),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225]),
+            ])
+        
+        else:
+            logging.info('\nIMPORTANT: Using Default classic Augmentation\n')
+            return transforms.Compose([
+                transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
+                transforms.RandomCrop(resize),
+                transforms.RandomHorizontalFlip(0.5),
+                transforms.ColorJitter(brightness=0.126, saturation=0.5),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
     else:
         return transforms.Compose([
             transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),

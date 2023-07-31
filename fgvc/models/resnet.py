@@ -200,16 +200,17 @@ def resnet34(pretrained=False, num_classes=1000):
 def resnet50(pretrained=False, num_classes=1000, stride=1):
     model = ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes, stride=stride)
     if pretrained:
-        # model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
-        checkpoint = torch.load('/home/rym/workspace/finegrained-codebase/ckpt_resnet50/checkpoint.pth.tar', map_location='cpu')
-        state_dict = checkpoint['state_dict']
-        if 'module' in list(state_dict.keys())[0]:
-            new_sd = {}
-            for key in state_dict.keys():
-                new_sd[key[7:]] = state_dict[key]
-            state_dict = new_sd
-        model.load_state_dict(state_dict)
-        print('Network loaded from pretrained ResNet50')
+        # # model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+        # checkpoint = torch.load('/home/rym/workspace/finegrained-codebase/ckpt_resnet50/checkpoint.pth.tar', map_location='cpu')
+        # state_dict = checkpoint['state_dict']
+        # if 'module' in list(state_dict.keys())[0]:
+        #     new_sd = {}
+        #     for key in state_dict.keys():
+        #         new_sd[key[7:]] = state_dict[key]
+        #     state_dict = new_sd
+        # model.load_state_dict(state_dict)
+        # print('Network loaded from pretrained ResNet50')
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
     return model
 
 
