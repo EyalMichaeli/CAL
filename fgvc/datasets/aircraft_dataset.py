@@ -40,6 +40,7 @@ class Planes(FGVCAircraft):
 
         if self.is_train and aug_json:
             self.init_augmentation(aug_json, aug_sample_ratio, limit_aug_per_image)
+            self.stop_aug = False
         else:
             self.aug_json = None
             logging.info('Not using augmented images')
@@ -121,8 +122,8 @@ class Planes(FGVCAircraft):
     def __getitem__(self, idx):
         image_path = self._image_files[idx]
 
-        if self.is_train and self.aug_json:
-            image_path = self.get_aug_image(image_path, idx)
+        if self.is_train and self.aug_json and not self.stop_aug:
+            image_path = self.get_aug_image(image_path, idx).replace("instruct-pix2pix", "Eyal-ip2p")
 
         img = Image.open(image_path).resize((224, 224))
         if self.transform:

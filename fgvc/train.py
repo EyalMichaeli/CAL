@@ -28,6 +28,7 @@ parser.add_argument('--seed', type=int, default=1)
 parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--logdir', type=str, default='logs')
 parser.add_argument('--dataset', type=str, default='planes')
+parser.add_argument('--epochs', type=int, default=None)
 # augmentation options
 parser.add_argument("--aug_json", type=str, default=None,
                     help="path to augmentation json file")
@@ -35,6 +36,8 @@ parser.add_argument("--aug_sample_ratio", type=float, default=None,
                     help="ratio to augment the original image")
 parser.add_argument("--limit_aug_per_image", type=int, default=None,
                     help="limit augmentations per image, default None, which is take all")
+parser.add_argument("--stop_aug_after_epoch", type=int, default=None,
+                    help="stop augmenting after this epoch")
 parser.add_argument("--special_aug", type=str, default=None,
                     help="special classic augmentation to use, out of randaug, autoaug")
 # add arg to take only some amount for the train set
@@ -46,19 +49,28 @@ args = parser.parse_args()
 
 """
 # train base with all the data
-# increase epochs in config to 160 if runninng this
 nohup sh -c 'python train.py \
     --gpu_id 0 \
     --seed 1 \
     --train_sample_ratio 1.0 \
+    --epochs 160 \
     --logdir logs/planes/base_seed_1_sample_ratio_1.0_resnet_50 \
     --dataset planes' \
     2>&1 | tee -a nohup_outputs/planes/base.log &
 
+# train base with 75% of the data
+nohup python train.py \
+    --gpu_id 0 \
+    --seed 1 \
+    --train_sample_ratio 0.75 \
+    --epochs 160 \
+    --logdir logs/planes/base_seed_1_sample_ratio_0.75_resnet_50 \
+    --dataset planes \
+    > nohup_outputs/planes/base.log &
 
 # train base with 50% of the data
 nohup python train.py \
-    --gpu_id 3 \
+    --gpu_id 0 \
     --seed 1 \
     --train_sample_ratio 0.5 \
     --logdir logs/planes/base_seed_1_sample_ratio_0.5_resnet_50 \
@@ -69,34 +81,65 @@ nohup python train.py \
 # train base with 50% of the data, with special augmentation
 nohup python train.py \
     --gpu_id 0 \
-    --seed 1 \
+    --seed 2 \
     --train_sample_ratio 0.5 \
-    --logdir logs/planes/base_seed_1_sample_ratio_0.5_resnet_50_autoaug \
+    --logdir logs/planes/base_seed__sample_ratio_0.5_resnet_50_cutmix \
     --dataset planes \
-    --special_aug autoaug \
+    --special_aug cutmix \
     > nohup_outputs/planes/base.log &
 
     
-# run augmented
-nohup python train.py \
-    --gpu_id 3 \
-    --seed 2 \
-    --train_sample_ratio 0.5 \
-    --logdir logs/planes/augmented_seed_2_sample_ratio_0.5_resnet_50_aug_ratio_0.2_merged_v0-v4_should_be_5x \
-    --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v4_should_be_5x.json \
-    --aug_sample_ratio 0.2 \
-    > nohup_outputs/planes/aug.log &
-
-# run augmented
+# run augmented 50%
 nohup python train.py \
     --gpu_id 0 \
     --seed 1 \
     --train_sample_ratio 0.5 \
-    --logdir logs/planes/augmented_seed_2_sample_ratio_0.5_resnet_50_aug_ratio_0.4_painting_should_be_1x \
+    --logdir logs/planes/augmented_seed_1_sample_ratio_0.5_resnet_50_aug_ratio_0.5_v10_should_be_2x \
     --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0723_1715_26_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_paintings_images_lpips_filter_0.1_0.8.json \
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0731_1957_03_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_all-constant-instructions_images_lpips_filter_0.1_0.8.json \
+    --aug_sample_ratio 0.5 \
+    --stop_aug_after_epoch 100 \
+    > nohup_outputs/planes/aug.log &
+
+    
+# run augmented 50%, with special augmentation
+nohup python train.py \
+    --gpu_id 0 \
+    --seed 1 \
+    --train_sample_ratio 0.5 \
+    --logdir logs/planes/augmented_seed_2_sample_ratio_0.5_resnet_50_aug_ratio_0.4_ \
+    --dataset planes \
+    --aug_json  \
     --aug_sample_ratio 0.4 \
+    --special_aug cutmix \
+    > nohup_outputs/planes/aug.log &
+
+    
+#### 75% of the data
+# run augmented
+nohup python train.py \
+    --gpu_id 3 \
+    --seed 1 \
+    --train_sample_ratio 0.75 \
+    --epochs 160 \
+    --logdir logs/planes/augmented_seed_1_sample_ratio_0.75_resnet_50_aug_ratio_0.5_merged_v0-v1-v3-v4-v8_should_be_5x \
+    --dataset planes \
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
+    --aug_sample_ratio 0.5 \
+    > nohup_outputs/planes/aug.log &
+
+
+#### all data
+# run augmented
+nohup python train.py \
+    --gpu_id 3 \
+    --seed 1 \
+    --train_sample_ratio 1.0 \
+    --epochs 160 \
+    --logdir logs/planes/augmented_seed_1_sample_ratio_1.0_resnet_50_aug_ratio_0.5_merged_v0-v1-v3-v4-v8_should_be_5x \
+    --dataset planes \
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
+    --aug_sample_ratio 0.5 \
     > nohup_outputs/planes/aug.log &
 
 
@@ -108,12 +151,23 @@ nohup python train.py \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0723_1715_26_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_paintings_images_lpips_filter_0.1_0.8.json \
 # v3, only constant. changing colors of the planes. LPIPS filter 0.1-0.8
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0724_1155_12_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_color-wise-constant_images_lpips_filter_0.1_0.8.json\
-# v4, similar to v1, plus weather changes. LPIPS filter 0.1-0.8
+# v4, similar to v1, plus weather changes. LPIPS filter 0.1-0.8. 1x images
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0724_2113_02_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_background-plus-weather_images_lpips_filter_0.1_0.8.json \
-# v5, MERGED v1 and v4. LPIPS filter 0.1-0.8
+# v5, MERGED v1 and v4. LPIPS filter 0.1-0.8. 2x images
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v1_v4_total_should_be_2x.json \
-# v6, MERGED v0-v5. LPIPS filter 0.1-0.8
+# v6, MERGED v0-v5. LPIPS filter 0.1-0.8. 5x images
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v4_should_be_5x.json \
+# v7, MERGED v0-v1, v3-v4. LPIPS filter 0.1-0.8. 4x images
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-plus-v3-v4_should_be_4x.json \
+# v8, all constant together. LPIPS filter 0.1-0.8. 1x images
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0731_1957_03_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_all-constant-instructions_images_lpips_filter_0.1_0.8.json \
+# v9, weather + plane color + background. LPIPS filter 0.1-0.8. 5x images
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
+# v10, same as v8. LPIPS filter 0.1-0.8. 2x images
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0731_1957_03_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_all-constant-instructions_images_lpips_filter_0.1_0.8.json \
+# v11: v9+v10. LPIPS filter 0.1-0.8. 7x images
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8-v10_should_be_7x.json \
+
 """
 
 # General loss functions
@@ -129,7 +183,7 @@ raw_metric = TopKAccuracyMetric(topk=(1, 5))
 crop_metric = TopKAccuracyMetric(topk=(1, 5))
 drop_metric = TopKAccuracyMetric(topk=(1, 5))
 
-best_acc = 0.0
+best_val_acc = 0.0
 
 
 
@@ -161,9 +215,12 @@ def main():
     # Logging setting
     ##################################
     config.save_dir = init_logging(args.logdir)
+    config.epochs = args.epochs if args.epochs else config.epochs
     wandb.init(project="CAL-aug-experiments", group=args.dataset, name=Path(config.save_dir).name)
 
     logging.info(f"args: {args}")
+    # log args to wandb
+    wandb.config.update(args)
 
     # set gpu id
     logging.info(f"gpu_id: {args.gpu_id}")
@@ -251,6 +308,10 @@ def main():
         logging.info('')
 
     for epoch in tqdm(range(start_epoch, config.epochs)):
+        if args.aug_json and args.stop_aug_after_epoch and epoch >= args.stop_aug_after_epoch:
+            train_dataset.stop_aug = True
+            logging.info(f"Reached args.stop_aug_after_epoch={args.stop_aug_after_epoch}, stopped augmentation")
+            
         logging.info("\n")
         callback.on_epoch_begin()
         logs['epoch'] = epoch + 1
@@ -385,7 +446,7 @@ def train(**kwargs):
         'train_drop_acc': epoch_drop_acc[0],
         'train_lr': now_lr,
         'epoch': epoch,
-        'total_epoch_time': total_time
+        'epoch_time': total_time
     })
 
     # write log for this epoch
@@ -397,7 +458,7 @@ def train(**kwargs):
 
 def validate(**kwargs):
     # Retrieve training configuration
-    global best_acc
+    global best_val_acc
     epoch = kwargs['epoch']
     logs = kwargs['logs']
     data_loader = kwargs['data_loader']
@@ -452,35 +513,36 @@ def validate(**kwargs):
     end_time = time.time()
     total_time = end_time - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-
-    # wandb
-    wandb.log({
-        'val_loss': epoch_loss,
-        'val_raw_acc': epoch_acc[0],
-        'val_crop_acc': aux_acc[0],
-        'val_drop_acc': aux_acc[0],
-        'epoch': epoch,
-        'total_val_time': total_time
-    })
     
     batch_info = 'Val Loss {:.4f}, Val Acc ({:.2f}, {:.2f})'.format(epoch_loss, epoch_acc[0], epoch_acc[1])
 
     pbar.set_postfix_str('{}, {}'.format(logs['train_info'], batch_info))
 
-    if epoch_acc[0] > best_acc:
-        best_acc = epoch_acc[0]
+    if epoch_acc[0] > best_val_acc:
+        best_val_acc = epoch_acc[0]
         save_model(net, logs, 'model_bestacc.pth')
 
-    if aux_acc[0] > best_acc:
-        best_acc = aux_acc[0]
-        save_model(net, logs, 'model_bestacc.pth')
+    # wandb
+    wandb.log({
+        'val_loss': epoch_loss,
+        'val_raw_acc': epoch_acc[0],
+        'val_best_raw_acc': best_val_acc,
+        'val_crop_acc': aux_acc[0],
+        'val_drop_acc': aux_acc[0],
+        'epoch': epoch,
+        'val_time': total_time
+    })
 
-    if epoch % 10 == 0:
-        save_model(net, logs, 'model_epoch%d.pth' % epoch)
+    # if aux_acc[0] > best_acc:
+    #     best_acc = aux_acc[0]
+    #     save_model(net, logs, 'model_bestacc.pth')
+
+    # if epoch % 10 == 0:
+    #     save_model(net, logs, 'model_epoch%d.pth' % epoch)
 
 
     batch_info = 'Val Loss {:.4f}, Val Acc ({:.2f}, {:.2f}), Val Aux Acc ({:.2f}, {:.2f}), Best {:.2f}'.format(
-        epoch_loss, epoch_acc[0], epoch_acc[1], aux_acc[0], aux_acc[1], best_acc)
+        epoch_loss, epoch_acc[0], epoch_acc[1], aux_acc[0], aux_acc[1], best_val_acc)
     logging.info(batch_info)
 
     # write log for this epoch
