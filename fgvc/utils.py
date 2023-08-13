@@ -184,7 +184,7 @@ def batch_augment(images, attention_map, mode='crop', theta=0.5, padding_ratio=0
 ##################################
 # transform in dataset
 ##################################
-def get_transform(resize, phase='train', special_aug=None):
+def get_transform(resize, phase='train', special_aug=None, doing_diffusion_aug=False):
     if phase == 'train':
         if special_aug == 'randaug':
             logging.info('\nIMPORTANT: Using RandAugment\n')
@@ -207,7 +207,16 @@ def get_transform(resize, phase='train', special_aug=None):
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225]),
             ])
-        
+        elif doing_diffusion_aug:
+            logging.info('\nIMPORTANT: Using Not using ColorJitter because using Diffusion Augmentation\n')
+            return transforms.Compose([
+                transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
+                transforms.RandomCrop(resize),
+                transforms.RandomHorizontalFlip(0.5),
+                # transforms.ColorJitter(brightness=0.126, saturation=0.5),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
         else:
             logging.info('\nIMPORTANT: Using Default classic Augmentation\n')
             return transforms.Compose([

@@ -2,9 +2,9 @@ import datetime
 import importlib
 import os
 from pathlib import Path
+import traceback
 
 import numpy as np
-import config as config
 
 import time
 import logging
@@ -29,6 +29,8 @@ parser.add_argument('--gpu_id', type=int, default=0)
 parser.add_argument('--logdir', type=str, default='logs')
 parser.add_argument('--dataset', type=str, default='planes')
 parser.add_argument('--epochs', type=int, default=None)
+parser.add_argument('--learning_rate', type=float, default=None)
+parser.add_argument('--batch_size', type=int, default=None)
 # augmentation options
 parser.add_argument("--aug_json", type=str, default=None,
                     help="path to augmentation json file")
@@ -46,129 +48,12 @@ parser.add_argument("--train_sample_ratio", type=float, default=1.0,
 
 args = parser.parse_args()
 
-
-"""
-# train base with all the data
-nohup sh -c 'python train.py \
-    --gpu_id 0 \
-    --seed 1 \
-    --train_sample_ratio 1.0 \
-    --epochs 160 \
-    --logdir logs/planes/base_seed_1_sample_ratio_1.0_resnet_50 \
-    --dataset planes' \
-    2>&1 | tee -a nohup_outputs/planes/base.log &
-
-# train base with 75% of the data
-nohup python train.py \
-    --gpu_id 0 \
-    --seed 1 \
-    --train_sample_ratio 0.75 \
-    --epochs 160 \
-    --logdir logs/planes/base_seed_1_sample_ratio_0.75_resnet_50 \
-    --dataset planes \
-    > nohup_outputs/planes/base.log &
-
-# train base with 50% of the data
-nohup python train.py \
-    --gpu_id 0 \
-    --seed 1 \
-    --train_sample_ratio 0.5 \
-    --logdir logs/planes/base_seed_1_sample_ratio_0.5_resnet_50 \
-    --dataset planes \
-    > nohup_outputs/planes/base.log &
-
-    
-# train base with 50% of the data, with special augmentation
-nohup python train.py \
-    --gpu_id 0 \
-    --seed 2 \
-    --train_sample_ratio 0.5 \
-    --logdir logs/planes/base_seed__sample_ratio_0.5_resnet_50_cutmix \
-    --dataset planes \
-    --special_aug cutmix \
-    > nohup_outputs/planes/base.log &
-
-    
-# run augmented 50%
-nohup python train.py \
-    --gpu_id 0 \
-    --seed 1 \
-    --train_sample_ratio 0.5 \
-    --logdir logs/planes/augmented_seed_1_sample_ratio_0.5_resnet_50_aug_ratio_0.5_v10_should_be_2x \
-    --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0731_1957_03_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_all-constant-instructions_images_lpips_filter_0.1_0.8.json \
-    --aug_sample_ratio 0.5 \
-    --stop_aug_after_epoch 100 \
-    > nohup_outputs/planes/aug.log &
-
-    
-# run augmented 50%, with special augmentation
-nohup python train.py \
-    --gpu_id 0 \
-    --seed 1 \
-    --train_sample_ratio 0.5 \
-    --logdir logs/planes/augmented_seed_2_sample_ratio_0.5_resnet_50_aug_ratio_0.4_ \
-    --dataset planes \
-    --aug_json  \
-    --aug_sample_ratio 0.4 \
-    --special_aug cutmix \
-    > nohup_outputs/planes/aug.log &
-
-    
-#### 75% of the data
-# run augmented
-nohup python train.py \
-    --gpu_id 3 \
-    --seed 1 \
-    --train_sample_ratio 0.75 \
-    --epochs 160 \
-    --logdir logs/planes/augmented_seed_1_sample_ratio_0.75_resnet_50_aug_ratio_0.5_merged_v0-v1-v3-v4-v8_should_be_5x \
-    --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
-    --aug_sample_ratio 0.5 \
-    > nohup_outputs/planes/aug.log &
-
-
-#### all data
-# run augmented
-nohup python train.py \
-    --gpu_id 3 \
-    --seed 1 \
-    --train_sample_ratio 1.0 \
-    --epochs 160 \
-    --logdir logs/planes/augmented_seed_1_sample_ratio_1.0_resnet_50_aug_ratio_0.5_merged_v0-v1-v3-v4-v8_should_be_5x \
-    --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
-    --aug_sample_ratio 0.5 \
-    > nohup_outputs/planes/aug.log &
-
-
-# v0: both gpt and constant. 70% gpt. LPIPS filter 0.1-0.8
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0721_2241_01_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_0.3_mainly_background_images_lpips_filter_0.1_0.8.json \
-# v1: only constant. LPIPS filter 0.1-0.8
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0722_1446_02_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_mainly_background_images_lpips_filter_0.1_0.8.json \
-# v2, only constant. painting. LPIPS filter 0.1-0.8
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0723_1715_26_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_paintings_images_lpips_filter_0.1_0.8.json \
-# v3, only constant. changing colors of the planes. LPIPS filter 0.1-0.8
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0724_1155_12_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_color-wise-constant_images_lpips_filter_0.1_0.8.json\
-# v4, similar to v1, plus weather changes. LPIPS filter 0.1-0.8. 1x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0724_2113_02_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_background-plus-weather_images_lpips_filter_0.1_0.8.json \
-# v5, MERGED v1 and v4. LPIPS filter 0.1-0.8. 2x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v1_v4_total_should_be_2x.json \
-# v6, MERGED v0-v5. LPIPS filter 0.1-0.8. 5x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v4_should_be_5x.json \
-# v7, MERGED v0-v1, v3-v4. LPIPS filter 0.1-0.8. 4x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-plus-v3-v4_should_be_4x.json \
-# v8, all constant together. LPIPS filter 0.1-0.8. 1x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0731_1957_03_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_all-constant-instructions_images_lpips_filter_0.1_0.8.json \
-# v9, weather + plane color + background. LPIPS filter 0.1-0.8. 5x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
-# v10, same as v8. LPIPS filter 0.1-0.8. 2x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/planes_2023_0731_1957_03_planes_ip2p_regular_blip_gpt_type_object_wise_with_background_and_time_of_day_v1_less_focus_on_colors_1x_image_w_1.5_blip_gpt_v1_ratio_1.0_all-constant-instructions_images_lpips_filter_0.1_0.8.json \
-# v11: v9+v10. LPIPS filter 0.1-0.8. 7x images
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8-v10_should_be_7x.json \
-
-"""
+if args.dataset == 'planes':
+    import configs.config_planes as config
+elif args.dataset == 'cars':
+    import configs.config_cars as config
+else:
+    raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
 # General loss functions
 cross_entropy_loss = nn.CrossEntropyLoss()
@@ -184,7 +69,6 @@ crop_metric = TopKAccuracyMetric(topk=(1, 5))
 drop_metric = TopKAccuracyMetric(topk=(1, 5))
 
 best_val_acc = 0.0
-
 
 
 def init_logging(logdir):
@@ -214,132 +98,153 @@ def main():
     ##################################
     # Logging setting
     ##################################
-    config.save_dir = init_logging(args.logdir)
-    config.epochs = args.epochs if args.epochs else config.epochs
-    wandb.init(project="CAL-aug-experiments", group=args.dataset, name=Path(config.save_dir).name)
+    try:
+        config.save_dir = init_logging(args.logdir)
 
-    logging.info(f"args: {args}")
-    # log args to wandb
-    wandb.config.update(args)
+        # only if stated in args:
+        config.epochs = args.epochs if args.epochs else config.epochs
+        config.learning_rate = args.learning_rate if args.learning_rate else config.learning_rate
+        config.batch_size = args.batch_size if args.batch_size else config.batch_size
 
-    # set gpu id
-    logging.info(f"gpu_id: {args.gpu_id}")
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
+        if args.dataset == "planes":
+            wandb.init(project=f"CAL-aug-experiments", group="planes", name=Path(config.save_dir).name)
+        else:  # TODO: make planes be general too. Only once u start experiments from the start.
+            wandb.init(project=f"CAL-aug-experiments-{args.dataset}", name=Path(config.save_dir).name)
 
-    # print pid
-    logging.info("PID: {}".format(os.getpid()))
+        args.net = config.net
+        args.image_size = config.image_size
+        args.num_attentions = config.num_attentions
+        args.beta = config.beta
 
-    # Setup random seed
-    logging.info("Using seed: {}".format(args.seed))
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
-    torch.cuda.seed_all()
-    np.random.seed(args.seed)
-    random.seed(args.seed)
-    # set deterministic cudnn
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+        logging.info(f"args: {args}")
+        # log args to wandb
+        wandb.config.update(args)
 
+        # set gpu id
+        logging.info(f"gpu_id: {args.gpu_id}")
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
 
-    train_dataset, validate_dataset = get_trainval_datasets(args.dataset, config.image_size, train_sample_ratio=args.train_sample_ratio, 
-                                                            aug_json=args.aug_json, aug_sample_ratio=args.aug_sample_ratio, limit_aug_per_image=args.limit_aug_per_image,
-                                                            special_aug=args.special_aug)
+        # print pid
+        logging.info("PID: {}".format(os.getpid()))
 
-    num_classes = train_dataset.num_classes
+        if args.seed:
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
 
-    ##################################
-    # Initialize model
-    ##################################
-    logs = {}
-    start_epoch = 0
-    net = WSDAN_CAL(num_classes=num_classes, M=config.num_attentions, net=config.net, pretrained=True)
-
-    # feature_center: size of (#classes, #attention_maps * #channel_features)
-    feature_center = torch.zeros(num_classes, config.num_attentions * net.num_features).cuda()
-
-    if config.ckpt and os.path.isfile(config.ckpt):
-        # Load ckpt and get state_dict
-        checkpoint = torch.load(config.ckpt)
-
-        # Get epoch and some logs
-        logs = checkpoint['logs']
-        start_epoch = int(logs['epoch']) # start from the beginning
-
-        # Load weights
-        state_dict = checkpoint['state_dict']
-        net.load_state_dict(state_dict)
-        logging.info('Network loaded from {}'.format(config.ckpt))
-        logging.info('Network loaded from {} @ {} epoch'.format(config.ckpt, start_epoch))
-
-        # load feature center
-        if 'feature_center' in checkpoint:
-            feature_center = checkpoint['feature_center'].cuda()
-            logging.info('feature_center loaded from {}'.format(config.ckpt))
-
-    logging.info('Network weights save to {}'.format(config.save_dir))
-
-    ##################################
-    # Use cuda
-    ##################################
-    net.cuda()
-
-    learning_rate = config.learning_rate
-    logging.info(f"Learning rate: {learning_rate}")
-    optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-5)
+            # Setup random seed
+            logging.info("Using seed: {}".format(args.seed))
+            torch.manual_seed(args.seed)
+            torch.cuda.manual_seed(args.seed)
+            torch.cuda.manual_seed_all(args.seed)
+            np.random.seed(args.seed)
+            random.seed(args.seed)    
 
 
-    train_loader = DataLoader(train_dataset, batch_size=config.batch_size,
-                                               num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=True)
-    validate_loader = DataLoader(validate_dataset, batch_size=config.batch_size * 4,
-                                               num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False)
+        train_dataset, validate_dataset = get_trainval_datasets(args.dataset, config.image_size, train_sample_ratio=args.train_sample_ratio, 
+                                                                aug_json=args.aug_json, aug_sample_ratio=args.aug_sample_ratio, limit_aug_per_image=args.limit_aug_per_image,
+                                                                special_aug=args.special_aug)
+
+        num_classes = train_dataset.num_classes
+
+        ##################################
+        # Initialize model
+        ##################################
+        logs = {}
+        start_epoch = 0
+        net = WSDAN_CAL(num_classes=num_classes, M=config.num_attentions, net=config.net, pretrained=True)
+
+        # feature_center: size of (#classes, #attention_maps * #channel_features)
+        feature_center = torch.zeros(num_classes, config.num_attentions * net.num_features).cuda()
+
+        if config.ckpt and os.path.isfile(config.ckpt):
+            # Load ckpt and get state_dict
+            checkpoint = torch.load(config.ckpt)
+
+            # Get epoch and some logs
+            logs = checkpoint['logs']
+            start_epoch = int(logs['epoch']) # start from the beginning
+
+            # Load weights
+            state_dict = checkpoint['state_dict']
+            net.load_state_dict(state_dict)
+            logging.info('Network loaded from {}'.format(config.ckpt))
+            logging.info('Network loaded from {} @ {} epoch'.format(config.ckpt, start_epoch))
+
+            # load feature center
+            if 'feature_center' in checkpoint:
+                feature_center = checkpoint['feature_center'].cuda()
+                logging.info('feature_center loaded from {}'.format(config.ckpt))
+
+        logging.info('Network weights save to {}'.format(config.save_dir))
+
+        ##################################
+        # Use cuda
+        ##################################
+        net.cuda()
+
+        learning_rate = config.learning_rate
+        logging.info(f"Learning rate: {learning_rate}")
+        optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-5)
 
 
-    callback_monitor = 'val_{}'.format(raw_metric.name)
-    callback = ModelCheckpoint(savepath=os.path.join(config.save_dir, config.model_name),
-                                monitor=callback_monitor,
-                                mode='max')
-    if callback_monitor in logs:
-        callback.set_best_score(logs[callback_monitor])
-    else:
-        callback.reset()
-        logging.info('Start training: Total epochs: {}, Batch size: {}, Training size: {}, Validation size: {}'.
-                     format(config.epochs, config.batch_size, len(train_dataset), len(validate_dataset)))
-        logging.info('')
+        train_loader = DataLoader(train_dataset, batch_size=config.batch_size,
+                                                num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=True)
+        validate_loader = DataLoader(validate_dataset, batch_size=config.batch_size * 4,
+                                                num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False)
 
-    for epoch in tqdm(range(start_epoch, config.epochs)):
-        if args.aug_json and args.stop_aug_after_epoch and epoch >= args.stop_aug_after_epoch:
-            train_dataset.stop_aug = True
-            logging.info(f"Reached args.stop_aug_after_epoch={args.stop_aug_after_epoch}, stopped augmentation")
-            
-        logging.info("\n")
-        callback.on_epoch_begin()
-        logs['epoch'] = epoch + 1
-        logs['lr'] = optimizer.param_groups[0]['lr']
-        logging.info(f"current lr: {optimizer.param_groups[0]['lr']}")
 
-        logging.info('Epoch {:03d}, Learning Rate {:g}'.format(epoch + 1, optimizer.param_groups[0]['lr']))
+        callback_monitor = 'val_{}'.format(raw_metric.name)
+        callback = ModelCheckpoint(savepath=os.path.join(config.save_dir, config.model_name),
+                                    monitor=callback_monitor,
+                                    mode='max')
+        if callback_monitor in logs:
+            callback.set_best_score(logs[callback_monitor])
+        else:
+            callback.reset()
+            logging.info('Start training: Total epochs: {}, Batch size: {}, Training size: {}, Validation size: {}'.
+                        format(config.epochs, config.batch_size, len(train_dataset), len(validate_dataset)))
+            logging.info('')
 
-        pbar = tqdm(total=len(train_loader), unit=' batches')
-        pbar.set_description('Epoch {}/{}'.format(epoch + 1, config.epochs))
+        for epoch in tqdm(range(start_epoch, config.epochs)):
+            if args.aug_json and args.stop_aug_after_epoch and epoch >= args.stop_aug_after_epoch:
+                train_dataset.stop_aug = True
+                logging.info(f"Reached args.stop_aug_after_epoch={args.stop_aug_after_epoch}, stopped augmentation")
+                
+            logging.info("\n")
+            callback.on_epoch_begin()
+            logs['epoch'] = epoch + 1
+            logs['lr'] = optimizer.param_groups[0]['lr']
 
-        train(epoch=epoch,
-              logs=logs,
-              data_loader=train_loader,
-              net=net,
-              feature_center=feature_center,
-              optimizer=optimizer,
-              pbar=pbar)
+            logging.info('Epoch {:03d}, Learning Rate {:g}'.format(epoch + 1, optimizer.param_groups[0]['lr']))
 
-        if (epoch) % 5 == 0:
-            validate(logs=logs,
-                    data_loader=validate_loader,
-                    net=net,
-                    pbar=pbar,
-                    epoch=epoch)
+            pbar = tqdm(total=len(train_loader), unit=' batches')
+            pbar.set_description('Epoch {}/{}'.format(epoch + 1, config.epochs))
 
-        callback.on_epoch_end(logs, net, feature_center=feature_center)
-        pbar.close()
+            train(epoch=epoch,
+                logs=logs,
+                data_loader=train_loader,
+                net=net,
+                feature_center=feature_center,
+                optimizer=optimizer,
+                pbar=pbar)
+
+            if (epoch) % 5 == 0 or epoch == config.epochs - 1:
+                validate(logs=logs,
+                        data_loader=validate_loader,
+                        net=net,
+                        pbar=pbar,
+                        epoch=epoch)
+
+            callback.on_epoch_end(logs, net, feature_center=feature_center)
+            pbar.close()
+    
+    except KeyboardInterrupt:
+        logging.info('KeyboardInterrupt at epoch {}'.format(epoch + 1))
+
+    except Exception as e:
+        logging.info(traceback.format_exc())
+        raise
+
 
 def adjust_learning(optimizer, epoch, iter):
     """Decay the learning rate based on schedule"""
@@ -592,14 +497,22 @@ if __name__ == '__main__':
     --dataset planes
     """
 
-    DEBUG = False
+    DEBUG = 0
     if DEBUG:
         args = Args()
-        args.seed = 1
+        args.seed = 2
         args.gpu_id = 0
-        args.logdir = 'logs/planes/base_seed_1_sample_ratio_1.0_resnet_50'
+        args.epochs = 100
+        args.logdir = 'logs/planes/test_delete_me'
         args.dataset = 'planes'
         args.train_sample_ratio = 1.0
+        args.aug_json = "/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_blip_diffusion_v0-4x.json"
+        args.aug_sample_ratio = 0.5
+        args.limit_aug_per_image = None
+        args.special_aug = None
+        args.stop_aug_after_epoch = 100
+
+
 
     main()
 

@@ -16,17 +16,20 @@ from torchvision.datasets import StanfordCars
 
 
 class Cars(StanfordCars):
-    def __init__(self, root: str = "/mnt/raid/home/eyal_michaeli/datasets/stanford_cars", split: str = "train", transform: Optional[Callable] = None, target_transform: Optional[Callable] = None, 
+    def __init__(self, root: str = "/mnt/raid/home/eyal_michaeli/datasets/", split: str = "train", transform: Optional[Callable] = None, target_transform: Optional[Callable] = None, 
                  download: bool = False, train_sample_ratio: float = 1.0, aug_json: str = None, aug_sample_ratio: float = None, limit_aug_per_image: int = None):
-        super().__init__(root=root, split=split, transform=transform, target_transform=target_transform, download=download)
+        super().__init__(root=root, split="train" if split =="train" else "test", transform=transform, target_transform=target_transform, download=download)
         self.is_train = "train" in split
-        self.original_data_length = len(self._image_files)
+        self.original_data_length = len(self._samples)
+
+        self._image_files = [sapmle[0] for sapmle in self._samples]
+        self._labels = [sapmle[1] for sapmle in self._samples]
 
         # use only a subset of the images for training, if train_sample_ratio < 1
         if self.is_train and train_sample_ratio < 1:
             self._image_files, self._labels = self.use_subset(train_sample_ratio, self._image_files, self._labels)
 
-        self.num_classes = len(set(self._labels))
+        self.num_classes = len(set(self.classes))
         logging.info("CARS {}".format(split.upper()))
         logging.info("LEN DATASET: {}".format(len(self._image_files)))
         logging.info("NUM CLASSES: {}".format(self.num_classes))
@@ -35,10 +38,10 @@ class Cars(StanfordCars):
             self.init_augmentation(aug_json, aug_sample_ratio, limit_aug_per_image)
         else:
             self.aug_json = None
-            logging.info("Not using augmented images")
+            logging.info("Not using DiffusionAug images")
     
 
-    def use_subset(self, sample_ratio, images_paths, labels_paths):
+    def use_subset(self, sample_ratio, images_paths, labels):
         assert sample_ratio > 0 and sample_ratio <= 1
         subset_size = int(len(images_paths) * sample_ratio)
         indices_to_take = np.random.choice(len(images_paths), subset_size, replace=False)
@@ -46,7 +49,7 @@ class Cars(StanfordCars):
         logging.info(f"With ratio {sample_ratio}, using only {subset_size} images for training, out of {len(images_paths)}")
         
         selected_images = np.array(images_paths)[indices_to_take]
-        selected_labels = np.array(labels_paths)[indices_to_take]
+        selected_labels = np.array(labels)[indices_to_take]
         
         return list(selected_images), list(selected_labels)
     
@@ -113,15 +116,15 @@ class Cars(StanfordCars):
 
 
     def __getitem__(self, idx):
-        image_path = self._image_files[idx]
+        image_path, label = self._image_files[idx], self._labels[idx]
 
         if self.is_train and self.aug_json:
-            image_path = self.get_aug_image(image_path, idx)
+            image_path = self.get_aug_image(image_path, idx).replace("instruct-pix2pix", "Eyal-ip2p")
 
-        img = Image.open(image_path).convert('RGB').resize((224, 224))
+        img = Image.open(image_path).convert('RGB')
         if self.transform:
             img = self.transform(img)
-        label = self._labels[idx]
+
         return img, label
 
 

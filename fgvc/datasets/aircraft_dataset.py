@@ -26,7 +26,7 @@ class Planes(FGVCAircraft):
         super().__init__(root=root, split=split, annotation_level='variant', transform=transform, target_transform=target_transform, download=download)
 
         self.is_train = 'train' in split
-        self.original_data_length = len(self._image_files)
+        self.original_data_length = self.__len__()
 
         # use only a subset of the images for training, if train_sample_ratio < 1
         if self.is_train and train_sample_ratio < 1:
@@ -34,19 +34,18 @@ class Planes(FGVCAircraft):
 
         # count number of unique classes in the labels
         self.num_classes = len(np.unique(self._labels))
-        logging.info('PLANES {}'.format(split.upper()))
-        logging.info('LEN DATASET: {}'.format(len(self._image_files)))
-        logging.info('NUM CLASSES: {}'.format(self.num_classes))
+        logging.info("PLANES {}".format(split.upper()))
+        logging.info("LEN DATASET: {}".format(len(self._image_files)))
+        logging.info("NUM CLASSES: {}".format(self.num_classes))
 
         if self.is_train and aug_json:
             self.init_augmentation(aug_json, aug_sample_ratio, limit_aug_per_image)
-            self.stop_aug = False
         else:
             self.aug_json = None
-            logging.info('Not using augmented images')
+            logging.info("Not using DiffusionAug images")
 
 
-    def use_subset(self, sample_ratio, images_paths, labels_paths):
+    def use_subset(self, sample_ratio, images_paths, labels):
         assert sample_ratio > 0 and sample_ratio <= 1
         subset_size = int(len(images_paths) * sample_ratio)
         indices_to_take = np.random.choice(len(images_paths), subset_size, replace=False)
@@ -54,7 +53,7 @@ class Planes(FGVCAircraft):
         logging.info(f"With ratio {sample_ratio}, using only {subset_size} images for training, out of {len(images_paths)}")
         
         selected_images = np.array(images_paths)[indices_to_take]
-        selected_labels = np.array(labels_paths)[indices_to_take]
+        selected_labels = np.array(labels)[indices_to_take]
         
         return list(selected_images), list(selected_labels)
 
@@ -120,12 +119,12 @@ class Planes(FGVCAircraft):
 
 
     def __getitem__(self, idx):
-        image_path = self._image_files[idx]
+        image_path, label = self._image_files[idx], self._labels[idx]
 
-        if self.is_train and self.aug_json and not self.stop_aug:
+        if self.is_train and self.aug_json:
             image_path = self.get_aug_image(image_path, idx).replace("instruct-pix2pix", "Eyal-ip2p")
 
-        img = Image.open(image_path).resize((224, 224))
+        img = Image.open(image_path).convert('RGB')
         if self.transform:
             img = self.transform(img)
         label = self._labels[idx]
@@ -190,6 +189,7 @@ class AircraftDataset(Dataset):
 
 
 if __name__ == '__main__':
+
     ds = Planes('test', 448)
     # print(len(ds))
     from utils import AverageMeter
