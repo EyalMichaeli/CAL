@@ -13,9 +13,6 @@ from torch.utils.data import Dataset
 from utils import get_transform
 from torchvision.datasets import FGVCAircraft
 
-DATAPATH = '/mnt/raid/home/eyal_michaeli/datasets/FGVC-Aircraft/fgvc-aircraft-2013b/data'
-FILENAME_LENGTH = 7
-
 
 
 class Planes(FGVCAircraft):
@@ -25,6 +22,8 @@ class Planes(FGVCAircraft):
                  aug_json=None, aug_sample_ratio: float = None, limit_aug_per_image: int = None):
         super().__init__(root=root, split=split, annotation_level='variant', transform=transform, target_transform=target_transform, download=download)
 
+        assert split in ['train', 'val', 'test']
+        
         self.is_train = 'train' in split
         self.original_data_length = self.__len__()
 
@@ -129,75 +128,3 @@ class Planes(FGVCAircraft):
             img = self.transform(img)
         label = self._labels[idx]
         return img, label
-
-
-
-"""repo dataset"""
-class AircraftDataset(Dataset):
-    """
-    # Description:
-        Dataset for retrieving FGVC Aircraft images and labels
-
-    # Member Functions:
-        __init__(self, phase, resize):  initializes a dataset
-            phase:                      a string in ['train', 'val', 'test']
-            resize:                     output shape/size of an image
-
-        __getitem__(self, item):        returns an image
-            item:                       the idex of image in the whole dataset
-
-        __len__(self):                  returns the length of dataset
-    """
-
-    def __init__(self, phase='train', resize=500):
-        assert phase in ['train', 'val', 'test']
-        self.phase = phase
-        self.resize = resize
-
-        variants_dict = {}
-        with open(os.path.join(DATAPATH, 'variants.txt'), 'r') as f:
-            for idx, line in enumerate(f.readlines()):
-                variants_dict[line.strip()] = idx
-        self.num_classes = len(variants_dict)
-
-        if phase == 'train':
-            list_path = os.path.join(DATAPATH, 'images_variant_trainval.txt')
-        else:
-            list_path = os.path.join(DATAPATH, 'images_variant_test.txt')
-
-        self.images = []
-        self.labels = []
-        with open(list_path, 'r') as f:
-            for line in f.readlines():
-                fname_and_variant = line.strip()
-                self.images.append(fname_and_variant[:FILENAME_LENGTH])
-                self.labels.append(variants_dict[fname_and_variant[FILENAME_LENGTH + 1:]])
-
-        # transform
-        self.transform = get_transform(self.resize, self.phase)
-
-    def __getitem__(self, item):
-        # image
-        image = Image.open(os.path.join(DATAPATH, 'images', '%s.jpg' % self.images[item])).convert('RGB')  # (C, H, W)
-        image = self.transform(image)
-
-        # return image and label
-        return image, self.labels[item]  # count begin from zero
-
-    def __len__(self):
-        return len(self.images)
-
-
-if __name__ == '__main__':
-
-    ds = Planes('test', 448)
-    # print(len(ds))
-    from utils import AverageMeter
-    height_meter = AverageMeter('height')
-    width_meter = AverageMeter('width')
-
-    for i in range(len(ds)):
-        image, label = ds[i]
-        avgH = height_meter(image.size(1))
-        avgW = width_meter(image.size(2))
-        print('H: %.2f, W: %.2f' % (avgH, avgW))

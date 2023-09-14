@@ -31,6 +31,7 @@ parser.add_argument('--dataset', type=str, default='planes')
 parser.add_argument('--epochs', type=int, default=None)
 parser.add_argument('--learning_rate', type=float, default=None)
 parser.add_argument('--batch_size', type=int, default=None)
+parser.add_argument('--weight_decay', type=float, default=None)
 # augmentation options
 parser.add_argument("--aug_json", type=str, default=None,
                     help="path to augmentation json file")
@@ -45,6 +46,8 @@ parser.add_argument("--special_aug", type=str, default=None,
 # add arg to take only some amount for the train set
 parser.add_argument("--train_sample_ratio", type=float, default=1.0,
                     help="ratio of train set to take")
+parser.add_argument("--use_wsdan", type=str, default=True,
+                    help="use WS-DAN or not")
 
 args = parser.parse_args()
 
@@ -106,15 +109,18 @@ def main():
         config.learning_rate = args.learning_rate if args.learning_rate else config.learning_rate
         config.batch_size = args.batch_size if args.batch_size else config.batch_size
 
-        if args.dataset == "planes":
-            wandb.init(project=f"CAL-aug-experiments", group="planes", name=Path(config.save_dir).name)
-        else:  # TODO: make planes be general too. Only once u start experiments from the start.
-            wandb.init(project=f"CAL-aug-experiments-{args.dataset}", name=Path(config.save_dir).name)
+        wandb.init(project=f"CAL-aug-exp-{args.dataset}", name=Path(config.save_dir).name)
 
         args.net = config.net
         args.image_size = config.image_size
         args.num_attentions = config.num_attentions
         args.beta = config.beta
+        if not args.learning_rate:
+            args.learning_rate = config.learning_rate
+        if not args.batch_size:
+            args.batch_size = config.batch_size
+        if not args.weight_decay:
+            args.weight_decay = config.weight_decay
 
         logging.info(f"args: {args}")
         # log args to wandb
@@ -185,7 +191,6 @@ def main():
         learning_rate = config.learning_rate
         logging.info(f"Learning rate: {learning_rate}")
         optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=1e-5)
-
 
         train_loader = DataLoader(train_dataset, batch_size=config.batch_size,
                                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=True)
@@ -309,10 +314,14 @@ def train(**kwargs):
         y_aux = torch.cat([y, y_aug], dim=0)
 
         # loss
-        batch_loss = cross_entropy_loss(y_pred_raw, y) / 3. + \
-                     cross_entropy_loss(y_pred_aux, y_aux) * 3. / 3. + \
-                     cross_entropy_loss(y_pred_aug, y_aug) * 2. / 3. + \
-                     center_loss(feature_matrix, feature_center_batch)
+        if args.use_wsdan:
+            batch_loss = cross_entropy_loss(y_pred_raw, y) / 3. + \
+                        cross_entropy_loss(y_pred_aux, y_aux) * 3. / 3. + \
+                        cross_entropy_loss(y_pred_aug, y_aug) * 2. / 3. + \
+                        center_loss(feature_matrix, feature_center_batch)
+        else:
+            # nnot divinding by 3 because not using 3 diff losses
+            batch_loss = cross_entropy_loss(y_pred_raw, y) + center_loss(feature_matrix, feature_center_batch)
 
         # backward
         batch_loss.backward()

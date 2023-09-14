@@ -86,6 +86,7 @@ class BAP(nn.Module):
         return feature_matrix, counterfactual_feature
 
 def batch_augment(images, attention_map, mode='crop', theta=0.5, padding_ratio=0.1):
+    """copied from: https://github.com/GuYuc/WS-DAN.PyTorch/blob/master/utils.py#L143"""
     batches, _, imgH, imgW = images.size()
 
     if mode == 'crop':
