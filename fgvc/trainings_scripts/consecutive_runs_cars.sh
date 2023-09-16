@@ -15,7 +15,7 @@ seeds=("1" "2" "3" "4")
 # train_sample_ratios=("0.25" "0.5" "0.75" "1.0")
 train_sample_ratios=("1.0")
 # special_augs=("cutmix" "randaug" "classic" "no")
-special_augs=("randaug" "cutmix")
+special_augs=("classic")
 
 # Run the training 
 for seed in "${seeds[@]}"
@@ -30,12 +30,13 @@ do
                 --seed $seed \
                 --train_sample_ratio $train_sample_ratio \
                 --epochs $epochs \
-                --logdir logs/$dataset/base \
+                --logdir logs/$dataset/base_cutmix_and_classic \
                 --learning_rate $learning_rate \
                 --weight_decay $weight_decay \
                 --batch_size $batch_size \
                 --special_aug $special_aug \
-                --dataset $dataset 
+                --dataset $dataset \
+                --use_cutmix
             wait # Wait for the previous training process to finish before starting the next one
         done
     done

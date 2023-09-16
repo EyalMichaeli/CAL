@@ -48,6 +48,8 @@ parser.add_argument("--train_sample_ratio", type=float, default=1.0,
                     help="ratio of train set to take")
 parser.add_argument("--dont_use_wsdan", action="store_true", default=False,
                     help="Don't use wsdan augmentation")
+parser.add_argument("--use_cutmix", action="store_true", default=False,
+                    help="Use cutmix augmentation")
 
 args = parser.parse_args()
 
@@ -150,7 +152,7 @@ def main():
 
         train_dataset, validate_dataset = get_trainval_datasets(args.dataset, config.image_size, train_sample_ratio=args.train_sample_ratio, 
                                                                 aug_json=args.aug_json, aug_sample_ratio=args.aug_sample_ratio, limit_aug_per_image=args.limit_aug_per_image,
-                                                                special_aug=args.special_aug)
+                                                                special_aug=args.special_aug, use_cutmix=args.use_cutmix)
 
         num_classes = train_dataset.num_classes
 

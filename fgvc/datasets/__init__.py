@@ -6,7 +6,7 @@ from utils import get_transform
 from cutmix.cutmix import CutMix
 
 
-def get_trainval_datasets(dataset, resize, train_sample_ratio=1.0, aug_json=None, aug_sample_ratio=None, limit_aug_per_image=None, special_aug=None):
+def get_trainval_datasets(dataset, resize, train_sample_ratio=1.0, aug_json=None, aug_sample_ratio=None, limit_aug_per_image=None, special_aug=None, use_cutmix=False):
     train_transform = get_transform(resize=resize, phase='train', special_aug=special_aug)
     val_transform = get_transform(resize=resize, phase='val')
     if dataset == 'planes':
@@ -18,7 +18,7 @@ def get_trainval_datasets(dataset, resize, train_sample_ratio=1.0, aug_json=None
     else:
         raise ValueError('Unsupported dataset {}'.format(dataset))
 
-    if special_aug == "cutmix":
+    if use_cutmix or special_aug == "cutmix":
         # we used the same params for cutmix as ALIA, DA-Fusion
         # DA-Fusion: https://github.com/brandontrabucco/da-fusion/blob/main/train_classifier.py#L134
         return CutMix(train, num_class=train.num_classes, beta=1.0, prob=0.5, num_mix=2).dataset, val
