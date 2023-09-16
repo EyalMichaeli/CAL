@@ -69,8 +69,7 @@ class Cars(StanfordCars):
 
         if self.limit_aug_per_image is not None:
             logging.info(f"Using only {self.limit_aug_per_image} augmented images per original image (or less if filtered out))")
-            logging.info(f"For example: {list(self.aug_json.values())[0]}, which is indeed of length {len(list(self.aug_json.values())[0])}")
-        assert self.limit_aug_per_image is None or self.limit_aug_per_image >= len(list(self.aug_json.values())[0]), "limit_aug_per_image must be >= the number of augmented images per original image"
+            assert max(self.aug_json.values(), key=len) <= self.limit_aug_per_image, "limit_aug_per_image must be >= the number of augmented images per original image"
         
         self.aug_sample_ratio = aug_sample_ratio
         self.times_used_orig_images = 0

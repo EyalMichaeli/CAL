@@ -207,7 +207,7 @@ def get_transform(resize, phase='train', special_aug=None, doing_diffusion_aug=F
                 transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225]),
             ])
-        elif doing_diffusion_aug:
+        elif special_aug == "classic_no_color":
             logging.info('\nIMPORTANT: Using Not using ColorJitter because using Diffusion Augmentation\n')
             return transforms.Compose([
                 transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
@@ -228,7 +228,7 @@ def get_transform(resize, phase='train', special_aug=None, doing_diffusion_aug=F
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
         else:
-            logging.info('\nIMPORTANT: Not using augmentation\n')
+            logging.info('\nIMPORTANT: Not using ANY augmentation\n')
             return transforms.Compose([
                 transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
                 transforms.CenterCrop(resize),

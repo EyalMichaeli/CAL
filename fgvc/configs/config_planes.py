@@ -31,16 +31,14 @@ ckpt = False
 """
 # train base with all the data
 nohup python train.py \
-    --gpu_id 2 \
-    --seed 1 \
+    --gpu_id 0 \
+    --seed 3 \
     --train_sample_ratio 1.0 \
-    --epochs 160 \
-    --logdir logs/planes/hparam_search \
-    --learning_rate 0.0001 \
-    --weight_decay 0.0001 \
-    --batch_size 4 \
+    --logdir logs/planes/base_no_wsdan_with_classic-repeat_twice \
     --dataset planes \
-    > nohup_outputs/planes/base.log &
+    --special_aug classic \
+    --dont_use_wsdan \
+    > nohup_outputs/planes/base.log 2>&1 &
 
 # train base with 75% of the data
 nohup python train.py \
@@ -50,7 +48,7 @@ nohup python train.py \
     --epochs 160 \
     --logdir logs/planes/base_seed_1_sample_ratio_0.75_resnet_50 \
     --dataset planes \
-    > nohup_outputs/planes/base.log &
+    > nohup_outputs/planes/base.log 2>&1 &
 
 # train base with 50% of the data
 nohup python train.py \
@@ -59,7 +57,7 @@ nohup python train.py \
     --train_sample_ratio 0.5 \
     --logdir logs/planes/---normal_base_resnet_101_mathing_lr_bs \
     --dataset planes \
-    > nohup_outputs/planes/base.log &
+    > nohup_outputs/planes/base.log 2>&1 &
 
     
 # train base with 50% of the data, with special augmentation
@@ -70,20 +68,19 @@ nohup python train.py \
     --logdir logs/planes/base_seed__sample_ratio_0.5_resnet_50_cutmix \
     --dataset planes \
     --special_aug cutmix \
-    > nohup_outputs/planes/base.log &
+    > nohup_outputs/planes/base.log 2>&1 &
 
     
 # run augmented 50%
 nohup python train.py \
-    --gpu_id 3 \
+    --gpu_id 1 \
     --seed 1 \
     --train_sample_ratio 0.5 \
-    --logdir logs/planes/aug-merged-blip-v15-ip2p-v10 \
+    --logdir logs/planes/aug-merged_blip-v15_v1.0 \
     --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/merged_ip2p-v10-blip-v15.json \
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/merged_blip-v15_v1.0.json \
     --aug_sample_ratio 0.5 \
-    --stop_aug_after_epoch 160 \
-    > nohup_outputs/planes/aug.log &
+    > nohup_outputs/planes/aug.log 2>&1 &
 
     
 # run augmented 50%, with special augmentation
@@ -96,7 +93,7 @@ nohup python train.py \
     --aug_json  \
     --aug_sample_ratio 0.4 \
     --special_aug cutmix \
-    > nohup_outputs/planes/aug.log &
+    > nohup_outputs/planes/aug.log 2>&1 &
 
     
 #### 75% of the data
@@ -110,7 +107,7 @@ nohup python train.py \
     --dataset planes \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
     --aug_sample_ratio 0.5 \
-    > nohup_outputs/planes/aug.log &
+    > nohup_outputs/planes/aug.log 2>&1 &
 
 
 #### all data
@@ -124,16 +121,21 @@ nohup python train.py \
     --dataset planes \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_v0-v1-v3-v4-v8_should_be_5x.json \
     --aug_sample_ratio 0.5 \
-    > nohup_outputs/planes/aug.log &
+    > nohup_outputs/planes/aug.log 2>&1 &
 
 
 new jsons:
 # BLIP diffusion
-# v0
+# v1.0: BLIP style. mainly 3x images. no sub class in prompt. LPIPS filter 0.1-0.7
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/blip_diffusion/blip_diffusion_style_v3_random_prompt_num_per_image_2_gs_7.5_num_inf_steps_50_seed_0_images_lpips_filter_0.1_0.7.json \
 
 # ip2p
-# v0
+# v1.0
 
+
+# MERGED
+# v0: merged blip v15 + v1.0. mainly 5x. LPIPS filter 0.1-0.7
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/merged_blip-v15_v1.0.json \
 
 
 older jsons:
@@ -186,7 +188,6 @@ older jsons:
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_same_source_and_style_gs_7.5-2x.json \
 # v23, BLIP diffusion, plane class in prompt. 1x images
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/blip_diffusion/blip_diffusion_v2-_random_prompt_prompt_with_sub_class_num_per_image_1_num_per_pair_1_guidance_scale_7.5_num_inference_steps_50_0_images_lpips_filter_0.1_0.7.json \
-
-# v24, merged 
+# v24, merged ip2p v10 + blip v15. 4x images
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/merged_ip2p-v10-blip-v15.json \
 """

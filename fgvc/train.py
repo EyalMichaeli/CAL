@@ -41,13 +41,13 @@ parser.add_argument("--limit_aug_per_image", type=int, default=None,
                     help="limit augmentations per image, default None, which is take all")
 parser.add_argument("--stop_aug_after_epoch", type=int, default=None,
                     help="stop augmenting after this epoch")
-parser.add_argument("--special_aug", type=str, default=None,
+parser.add_argument("--special_aug", type=str, default="classic",
                     help="special classic augmentation to use, out of randaug, autoaug")
 # add arg to take only some amount for the train set
 parser.add_argument("--train_sample_ratio", type=float, default=1.0,
                     help="ratio of train set to take")
-parser.add_argument("--use_wsdan", type=str, default=True,
-                    help="use WS-DAN or not")
+parser.add_argument("--dont_use_wsdan", action="store_true", default=False,
+                    help="Don't use wsdan augmentation")
 
 args = parser.parse_args()
 
@@ -145,6 +145,8 @@ def main():
             np.random.seed(args.seed)
             random.seed(args.seed)    
 
+        if args.dont_use_wsdan:
+            logging.info("Not using wsdan augmentation")
 
         train_dataset, validate_dataset = get_trainval_datasets(args.dataset, config.image_size, train_sample_ratio=args.train_sample_ratio, 
                                                                 aug_json=args.aug_json, aug_sample_ratio=args.aug_sample_ratio, limit_aug_per_image=args.limit_aug_per_image,
@@ -314,13 +316,13 @@ def train(**kwargs):
         y_aux = torch.cat([y, y_aug], dim=0)
 
         # loss
-        if args.use_wsdan:
+        if not args.dont_use_wsdan:  # use wsdan augmentation loss
             batch_loss = cross_entropy_loss(y_pred_raw, y) / 3. + \
                         cross_entropy_loss(y_pred_aux, y_aux) * 3. / 3. + \
                         cross_entropy_loss(y_pred_aug, y_aug) * 2. / 3. + \
                         center_loss(feature_matrix, feature_center_batch)
         else:
-            # nnot divinding by 3 because not using 3 diff losses
+            # not divinding by 3 because not using 3 diff losses. This is not efficient because still computing it, just no using it.
             batch_loss = cross_entropy_loss(y_pred_raw, y) + center_loss(feature_matrix, feature_center_batch)
 
         # backward
