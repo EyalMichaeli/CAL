@@ -19,6 +19,7 @@ def get_trainval_datasets(dataset, resize, train_sample_ratio=1.0, aug_json=None
         raise ValueError('Unsupported dataset {}'.format(dataset))
 
     if use_cutmix or special_aug == "cutmix":
+        logging.info("Using CutMix augmentation")
         # we used the same params for cutmix as ALIA, DA-Fusion
         # DA-Fusion: https://github.com/brandontrabucco/da-fusion/blob/main/train_classifier.py#L134
         return CutMix(train, num_class=train.num_classes, beta=1.0, prob=0.5, num_mix=2).dataset, val

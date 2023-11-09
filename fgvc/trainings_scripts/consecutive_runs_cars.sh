@@ -8,7 +8,7 @@ batch_size="8"
 learning_rate="0.001"
 weight_decay="0.001"
 epochs="160"
-gpu_id="2"
+gpu_id="0"
 
 # iterate over
 seeds=("1" "2" "3" "4")

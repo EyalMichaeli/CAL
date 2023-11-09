@@ -208,7 +208,7 @@ def get_transform(resize, phase='train', special_aug=None, doing_diffusion_aug=F
                                      std=[0.229, 0.224, 0.225]),
             ])
         elif special_aug == "classic_no_color":
-            logging.info('\nIMPORTANT: Using Not using ColorJitter because using Diffusion Augmentation\n')
+            logging.info('\nIMPORTANT: Using classic augmentation but Not using ColorJitter\n')
             return transforms.Compose([
                 transforms.Resize(size=(int(resize[0] / 0.875), int(resize[1] / 0.875))),
                 transforms.RandomCrop(resize),
