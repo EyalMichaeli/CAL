@@ -3,7 +3,7 @@ import os
 import pdb
 from PIL import Image
 from torch.utils.data import Dataset
-from utils import get_transform
+from util import get_transform
 
 DATAPATH = './CUB_200_2011'
 image_path = {}

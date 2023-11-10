@@ -1,11 +1,8 @@
 import datetime
-import importlib
 import os
 from pathlib import Path
 import traceback
-
 import numpy as np
-
 import time
 import logging
 import warnings
@@ -14,13 +11,16 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchvision import transforms
 import random
-from models import WSDAN_CAL
-from utils import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment
-from datasets import get_trainval_datasets
 import argparse
 import wandb
+import clip
+
+from models import WSDAN_CAL
+from util import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment
+from datasets import get_trainval_datasets
+from losses import *
+from utils.utils import PlanesUtils, CarsUtils
 
 
 parser = argparse.ArgumentParser()
@@ -50,6 +50,8 @@ parser.add_argument("--dont_use_wsdan", action="store_true", default=False,
                     help="Don't use wsdan augmentation")
 parser.add_argument("--use_cutmix", action="store_true", default=False,
                     help="Use cutmix augmentation")
+parser.add_argument("--use_target_soft_cross_entropy", action="store_true", default=False,
+                    help="Use soft target cross entropy loss")
 
 args = parser.parse_args()
 
@@ -60,6 +62,8 @@ elif args.dataset == 'cars':
 else:
     raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
+
+    
 # General loss functions
 cross_entropy_loss = nn.CrossEntropyLoss()
 center_loss = CenterLoss()
@@ -111,7 +115,8 @@ def main():
         config.learning_rate = args.learning_rate if args.learning_rate else config.learning_rate
         config.batch_size = args.batch_size if args.batch_size else config.batch_size
 
-        wandb.init(project=f"CAL-aug-exp-{args.dataset}", name=Path(config.save_dir).name)
+        if not DONT_WANDB:
+            wandb.init(project=f"CAL-aug-exp-{args.dataset}", name=Path(config.save_dir).name)
 
         args.net = config.net
         args.image_size = config.image_size
@@ -126,7 +131,8 @@ def main():
 
         logging.info(f"args: {args}")
         # log args to wandb
-        wandb.config.update(args)
+        if not DONT_WANDB:
+            wandb.config.update(args)
 
         # set gpu id
         logging.info(f"gpu_id: {args.gpu_id}")
@@ -161,6 +167,28 @@ def main():
         logs = {}
         start_epoch = 0
         net = WSDAN_CAL(num_classes=num_classes, M=config.num_attentions, net=config.net, pretrained=True)
+
+        # init model for soft target cross entropy
+        if args.use_target_soft_cross_entropy:
+            logging.info("Using soft target cross entropy loss")
+            global soft_target_cross_entropy, clip_selector, image_stem_to_class_dict
+
+            soft_target_cross_entropy = SoftTargetCrossEntropy_T()  # input is logits, CLIP logits
+            model, preprocess = clip.load('RN50', 'cuda', jit=False)
+            if args.dataset == "planes":
+                planes = PlanesUtils()
+                classnames = planes.get_classes()
+                prompts = ["a photo of a " + name + ", a type of aircraft." for name in classnames]
+                image_stem_to_class_dict = planes.get_image_stem_to_class_dict()  # id --> class
+            elif args.dataset == "cars":
+                cars = CarsUtils()
+                classnames = cars.get_classes()
+                prompts = ["a photo of a " + name + ", a type of car." for name in classnames]
+                image_stem_to_class_dict = cars.get_image_stem_to_class_dict()  # id --> class
+
+            
+            tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts]).cuda()
+            clip_selector = CLIP_selector(model, preprocess, preprocess, tokenized_prompts)
 
         # feature_center: size of (#classes, #attention_maps * #channel_features)
         feature_center = torch.zeros(num_classes, config.num_attentions * net.num_features).cuda()
@@ -318,10 +346,28 @@ def train(**kwargs):
 
         # loss
         if not args.dont_use_wsdan:  # use wsdan augmentation loss
-            batch_loss = cross_entropy_loss(y_pred_raw, y) / 3. + \
-                        cross_entropy_loss(y_pred_aux, y_aux) * 3. / 3. + \
-                        cross_entropy_loss(y_pred_aug, y_aug) * 2. / 3. + \
-                        center_loss(feature_matrix, feature_center_batch)
+            REGULAR_CE_RATIO = 0.5
+            if args.use_target_soft_cross_entropy:
+                batch_loss = center_loss(feature_matrix, feature_center_batch)  # not realated to CE loss 
+                batch_loss += REGULAR_CE_RATIO * ( cross_entropy_loss(y_pred_raw, y) / 3. + \
+                            cross_entropy_loss(y_pred_aux, y_aux) * 3. / 3. + \
+                            cross_entropy_loss(y_pred_aug, y_aug) * 2. / 3. )  # regular CE loss
+                
+                # add soft target cross entropy loss
+                global soft_target_cross_entropy, clip_selector
+                logits = clip_selector(X)
+
+                logits_aug = torch.cat([logits, logits], dim=0)  # same as y_aug
+                logits_aux = torch.cat([logits, logits_aug], dim=0)  # same as y_aux
+                batch_loss += (1 - REGULAR_CE_RATIO) * ( soft_target_cross_entropy(y_pred_raw, logits) / 3. + \
+                            soft_target_cross_entropy(y_pred_aux, logits_aux) * 3. / 3. + \
+                            soft_target_cross_entropy(y_pred_aug, logits_aug) * 2. / 3. ) # soft target CE loss
+
+            else: # regular loss with normal CE
+                batch_loss = cross_entropy_loss(y_pred_raw, y) / 3. + \
+                            cross_entropy_loss(y_pred_aux, y_aux) * 3. / 3. + \
+                            cross_entropy_loss(y_pred_aug, y_aug) * 2. / 3. + \
+                            center_loss(feature_matrix, feature_center_batch)
         else:
             # not divinding by 3 because not using 3 diff losses. This is not efficient because still computing it, just no using it.
             batch_loss = cross_entropy_loss(y_pred_raw, y) + center_loss(feature_matrix, feature_center_batch)
@@ -355,16 +401,17 @@ def train(**kwargs):
     total_time = end_time - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
 
-    # wandb
-    wandb.log({
-        'train_loss': epoch_loss,
-        'train_raw_acc': epoch_raw_acc[0],
-        'train_crop_acc': epoch_crop_acc[0],
-        'train_drop_acc': epoch_drop_acc[0],
-        'train_lr': now_lr,
-        'epoch': epoch,
-        'epoch_time': total_time
-    })
+    if not DONT_WANDB:
+        # wandb
+        wandb.log({
+            'train_loss': epoch_loss,
+            'train_raw_acc': epoch_raw_acc[0],
+            'train_crop_acc': epoch_crop_acc[0],
+            'train_drop_acc': epoch_drop_acc[0],
+            'train_lr': now_lr,
+            'epoch': epoch,
+            'epoch_time': total_time
+        })
 
     # write log for this epoch
     logging.info('Train: {}'.format(last_batch_info))
@@ -439,16 +486,17 @@ def validate(**kwargs):
         best_val_acc = epoch_acc[0]
         save_model(net, logs, 'model_bestacc.pth')
 
-    # wandb
-    wandb.log({
-        'val_loss': epoch_loss,
-        'val_raw_acc': epoch_acc[0],
-        'val_best_raw_acc': best_val_acc,
-        'val_crop_acc': aux_acc[0],
-        'val_drop_acc': aux_acc[0],
-        'epoch': epoch,
-        'val_time': total_time
-    })
+    if not DONT_WANDB:
+        # wandb
+        wandb.log({
+            'val_loss': epoch_loss,
+            'val_raw_acc': epoch_acc[0],
+            'val_best_raw_acc': best_val_acc,
+            'val_crop_acc': aux_acc[0],
+            'val_drop_acc': aux_acc[0],
+            'epoch': epoch,
+            'val_time': total_time
+        })
 
     # if aux_acc[0] > best_acc:
     #     best_acc = aux_acc[0]
@@ -502,29 +550,30 @@ if __name__ == '__main__':
 
     """
     use this:
-    --gpu_id 0 \
-    --seed 1 \
-    --train_sample_ratio 1.0 \
-    --logdir logs/planes/base_seed_1_sample_ratio_1.0_resnet_50 \
-    --dataset planes
-    """
 
+    """
+    DONT_WANDB = False
     DEBUG = 0
     if DEBUG:
+        DONT_WANDB = True
         args = Args()
         args.seed = 2
         args.gpu_id = 0
         args.epochs = 100
         args.logdir = 'logs/planes/test_delete_me'
         args.dataset = 'planes'
+        args.learning_rate = 0.001
+        args.batch_size = 10
+        args.weight_decay = 1e-5
         args.train_sample_ratio = 1.0
         args.aug_json = "/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_blip_diffusion_v0-4x.json"
         args.aug_sample_ratio = 0.5
         args.limit_aug_per_image = None
         args.special_aug = None
         args.stop_aug_after_epoch = 100
-
-
+        args.use_target_soft_cross_entropy = True
+        args.dont_use_wsdan = False
+        args.use_cutmix = False
 
     main()
 

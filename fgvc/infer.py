@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 
 from models import WSDAN_CAL
 from datasets import get_trainval_datasets
-from utils import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment
+from util import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment
 
 # GPU settings
 assert torch.cuda.is_available()

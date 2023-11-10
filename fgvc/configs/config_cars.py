@@ -72,11 +72,12 @@ nohup python train.py \
     --gpu_id 1 \
     --seed 2 \
     --train_sample_ratio 1.0 \
-    --logdir logs/cars/aug-controlNet-edges-120-200-txt2sentance-clip_filtering \
+    --logdir logs/cars/aug-controlNet-edges-120-200-txt2sentance-clip_filtering-sce \
     --dataset cars \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/cars/sd_v1.5/sd_v1.5_canny_v3-SD-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_low_120_high_200_seed_0_images_lpips_filter_None_None_clip_filtering_true.json \
     --aug_sample_ratio 0.5 \
     --stop_aug_after_epoch 160 \
+    --
     > nohup_outputs/cars/aug.log 2>&1 &
 
     

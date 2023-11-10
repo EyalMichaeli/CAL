@@ -2,7 +2,7 @@ import logging
 from .aircraft_dataset import Planes
 from .bird_dataset import BirdDataset
 from .car_dataset import Cars
-from utils import get_transform
+from util import get_transform
 from cutmix.cutmix import CutMix
 
 
