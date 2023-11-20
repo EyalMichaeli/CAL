@@ -1,18 +1,22 @@
 #!/bin/bash
-cd ../..
+
+
+dataset="dtd"
 # Define the hyperparameter values
 batch_sizes=("4" "8" "16")
 # learning_rates=("0.0001" "0.001" "0.01" "0.1")
-learning_rates=("0.0001" "0.001")
-weight_decays=("1e-5" "1e-4" "1e-3")
+learning_rates=("0.0001" "0.001" "0.01")
+weight_decays=("0.00001" "0.0001" "0.001")
 
-last_used_batch_size="4"
-last_used_lr="0.001"
-last_used_wd="1e-5"
 start_from_last_used_hyperparameters=true
-is_training=true
+last_used_batch_size="16"
+last_used_lr="0.001"
+last_used_wd="0.0001" 
+
+
 # if start_from_last_used_hyperparameters is true, it will set is_training to false, and only when the combination of last used hyperparameters is found, 
 # will set is_training to true
+is_training=true
 if [ "$start_from_last_used_hyperparameters" = true ] ; then
     is_training=false
     echo "Starting from the last used hyperparameters: batch_size=$last_used_batch_size, lr=$last_used_lr, wd=$last_used_wd"
@@ -24,24 +28,27 @@ for batch_size in "${batch_sizes[@]}"; do
         for wd in "${weight_decays[@]}"; do
             #### Skip the hyperparameter combinations that have already been trained
             if [ "$is_training" = false ] ; then
+                echo "skipping"
                 if [ "$batch_size" = "$last_used_batch_size" ] && [ "$lr" = "$last_used_lr" ] && [ "$wd" = "$last_used_wd" ] ; then
                     is_training=true
                     # will train the next loop iteration
                 fi
                 continue
             fi
+            
+            echo "starting training..."
             ####
             nohup python train.py \
                 --gpu_id 0 \
                 --seed 1 \
                 --train_sample_ratio 1.0 \
-                --epochs 160 \
+                --epochs 120 \
                 --batch_size "$batch_size" \
                 --learning_rate "$lr" \
                 --weight_decay "$wd" \
-                --logdir logs/cars/hparam_search \
-                --dataset cars \
-                > "nohup_outputs/cars/base.log" &
+                --logdir "logs/$dataset/hparam_search" \
+                --dataset "$dataset" \
+                > "nohup_outputs/$dataset/base.log" &
             
             # Wait for the current training run to finish before starting the next one
             wait
@@ -49,4 +56,4 @@ for batch_size in "${batch_sizes[@]}"; do
     done
 done
 
-# run with nohup trainings_scripts/hparam_search/hparam_search_cars.sh
+# run with nohup trainings_scripts/hparam_search.sh

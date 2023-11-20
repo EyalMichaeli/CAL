@@ -1,17 +1,18 @@
 #!/bin/bash
-ls
+
 ############################################################################################################
 # run several with the same hparams, but diff seeds and train_sample_ratios
-# Define the hyperparameter values found in hparam_search
-dataset="cars"
-batch_size="8"
+# Define the hyperparameter values
+dataset="dtd"
+batch_size="16"
 learning_rate="0.001"
 weight_decay="0.001"
 epochs="160"
 gpu_id="0"
 
 # iterate over
-seeds=("1" "2" "3" "4")
+seeds=("2" "3" "4")
+# seeds=("4")
 # train_sample_ratios=("0.25" "0.5" "0.75" "1.0")
 train_sample_ratios=("1.0")
 # special_augs=("cutmix" "randaug" "classic" "no")
@@ -36,11 +37,11 @@ do
                 --batch_size $batch_size \
                 --special_aug $special_aug \
                 --dataset $dataset \
-                --use_cutmix
             wait # Wait for the previous training process to finish before starting the next one
         done
     done
 done
+
 
 ############################################################################################################
 
@@ -48,5 +49,5 @@ done
 
 # run with 
 """
-nohup trainings_scripts/consecutive_runs_cars.sh > script_output_cars.log 2>&1 &
+nohup trainings_scripts/consecutive_runs_dtd.sh > script_output_dtd.log 2>&1 &
 """

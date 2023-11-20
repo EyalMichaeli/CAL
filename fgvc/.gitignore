@@ -17,3 +17,5 @@ nohup*
 *logs*
 
 
+*.out
+../nohup.out

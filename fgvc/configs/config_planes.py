@@ -54,9 +54,9 @@ nohup python train.py \
 # run augmented - controlNet
 nohup python train.py \
     --gpu_id 2 \
-    --seed 3 \
+    --seed 1 \
     --train_sample_ratio 1.0 \
-    --logdir logs/planes/aug-controlNet-edges-120-200-txt2sentance-clip_filtering-repeat\
+    --logdir logs/planes/aug-controlNet-edges-120-200-txt2sentance-clip_filtering-repeat_to_see_all_ok_after_sce_integration\
     --dataset planes \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_v1.5/sd_v1.5_canny_v3-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_low_120_high_200_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
     --aug_sample_ratio 0.3 \
@@ -65,13 +65,13 @@ nohup python train.py \
     
 # run augmented: SD (txt2img)
 nohup python train.py \
-    --gpu_id 1 \
+    --gpu_id 0 \
     --seed 2 \
     --train_sample_ratio 1.0 \
-    --logdir logs/planes/aug-SD-XL-clip_filtering-txt2sentance-SDEdit-repeat\
+    --logdir logs/planes/aug-SD-XL-clip_filtering-txt2sentance\
     --dataset planes \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl_SDEdit/sd_xl_SDEdit_None_v4-text2sentance_prompts-SDEdit_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_SDEdit_strength_0.5_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
-    --aug_sample_ratio 0.2 \
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl/sd_xl_None_v3-SD-XL-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
+    --aug_sample_ratio 0.3 \
     > nohup_outputs/planes/aug.log 2>&1 &
 
 
@@ -141,6 +141,9 @@ Stable diffusion:
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_v1.5_SDEdit/sd_v1.5_SDEdit_None_v4-text2sentance_prompts-SDEdit_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_SDEdit_strength_0.5_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
 # v7: SD XL SDEdit, text2sentance model, CLIP filtering. 2x.
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl_SDEdit/sd_xl_SDEdit_None_v4-text2sentance_prompts-SDEdit_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_SDEdit_strength_0.5_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
+# v8: SD XL, text2sentance model, CLIP filtering. 2x. (didn't do CLIP filtering till now without SDEdit!)
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl/sd_xl_None_v3-SD-XL-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
+
     
 # MERGED
 # v0: merged blip v15 + v1.0. mainly 5x. LPIPS filter 0.1-0.7

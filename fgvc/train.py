@@ -14,13 +14,10 @@ from torch.utils.data import DataLoader
 import random
 import argparse
 import wandb
-import clip
 
 from models import WSDAN_CAL
 from util import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment
-from datasets import get_trainval_datasets
-from losses import *
-from utils.utils import PlanesUtils, CarsUtils
+from datasets import get_datasets
 
 
 parser = argparse.ArgumentParser()
@@ -59,6 +56,8 @@ if args.dataset == 'planes':
     import configs.config_planes as config
 elif args.dataset == 'cars':
     import configs.config_cars as config
+elif args.dataset == 'dtd':
+    import configs.config_dtd as config
 else:
     raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
@@ -142,7 +141,6 @@ def main():
         logging.info("PID: {}".format(os.getpid()))
 
         if args.seed:
-
             # Setup random seed
             logging.info("Using seed: {}".format(args.seed))
             torch.manual_seed(args.seed)
@@ -155,7 +153,7 @@ def main():
         if args.dont_use_wsdan:
             logging.info("Not using wsdan augmentation")
 
-        train_dataset, validate_dataset = get_trainval_datasets(args.dataset, config.image_size, train_sample_ratio=args.train_sample_ratio, 
+        train_dataset, validate_dataset, test_dataset = get_datasets(args.dataset, config.image_size, train_sample_ratio=args.train_sample_ratio, 
                                                                 aug_json=args.aug_json, aug_sample_ratio=args.aug_sample_ratio, limit_aug_per_image=args.limit_aug_per_image,
                                                                 special_aug=args.special_aug, use_cutmix=args.use_cutmix)
 
@@ -170,10 +168,15 @@ def main():
 
         # init model for soft target cross entropy
         if args.use_target_soft_cross_entropy:
-            logging.info("Using soft target cross entropy loss")
+            from utils.utils import PlanesUtils, CarsUtils
+            import clip
+            import losses
+            # the import here because in utils.py there is an initialization of a device, which interrupt the cuda device setting in the start of this script
+
+            logging.info("IMPORTANT: Using soft target cross entropy loss")
             global soft_target_cross_entropy, clip_selector, image_stem_to_class_dict
 
-            soft_target_cross_entropy = SoftTargetCrossEntropy_T()  # input is logits, CLIP logits
+            soft_target_cross_entropy = losses.SoftTargetCrossEntropy_T()  # input is logits, CLIP logits
             model, preprocess = clip.load('RN50', 'cuda', jit=False)
             if args.dataset == "planes":
                 planes = PlanesUtils()
@@ -188,7 +191,7 @@ def main():
 
             
             tokenized_prompts = torch.cat([clip.tokenize(p) for p in prompts]).cuda()
-            clip_selector = CLIP_selector(model, preprocess, preprocess, tokenized_prompts)
+            clip_selector = losses.CLIP_selector(model, preprocess, preprocess, tokenized_prompts)
 
         # feature_center: size of (#classes, #attention_maps * #channel_features)
         feature_center = torch.zeros(num_classes, config.num_attentions * net.num_features).cuda()
@@ -227,7 +230,8 @@ def main():
                                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=True)
         validate_loader = DataLoader(validate_dataset, batch_size=config.batch_size * 4,
                                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False)
-
+        test_loader = DataLoader(test_dataset, batch_size=config.batch_size * 4, 
+                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False)
 
         callback_monitor = 'val_{}'.format(raw_metric.name)
         callback = ModelCheckpoint(savepath=os.path.join(config.save_dir, config.model_name),
@@ -269,7 +273,14 @@ def main():
                         data_loader=validate_loader,
                         net=net,
                         pbar=pbar,
-                        epoch=epoch)
+                        epoch=epoch,
+                        is_test=False)
+                validate(logs=logs,
+                        data_loader=test_loader,
+                        net=net,
+                        pbar=pbar,
+                        epoch=epoch,
+                        is_test=True)
 
             callback.on_epoch_end(logs, net, feature_center=feature_center)
             pbar.close()
@@ -428,6 +439,8 @@ def validate(**kwargs):
     data_loader = kwargs['data_loader']
     net = kwargs['net']
     pbar = kwargs['pbar']
+    is_test = kwargs['is_test']
+    val_str = 'test' if is_test else 'val'
 
     # metrics initialization
     loss_container.reset()
@@ -472,13 +485,13 @@ def validate(**kwargs):
             aux_acc = drop_metric(y_pred_aux, y)
 
     # end of validation
-    logs['val_{}'.format(loss_container.name)] = epoch_loss
-    logs['val_{}'.format(raw_metric.name)] = epoch_acc
+    logs[f'{val_str}_{loss_container.name}'] = epoch_loss
+    logs[f'{val_str}_{raw_metric.name}'] = epoch_acc
     end_time = time.time()
     total_time = end_time - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     
-    batch_info = 'Val Loss {:.4f}, Val Acc ({:.2f}, {:.2f})'.format(epoch_loss, epoch_acc[0], epoch_acc[1])
+    batch_info = f'{val_str} Loss {epoch_loss:.4f}, {val_str} Acc ({epoch_acc[0]:.2f}, {epoch_acc[1]:.2f})'
 
     pbar.set_postfix_str('{}, {}'.format(logs['train_info'], batch_info))
 
@@ -489,13 +502,13 @@ def validate(**kwargs):
     if not DONT_WANDB:
         # wandb
         wandb.log({
-            'val_loss': epoch_loss,
-            'val_raw_acc': epoch_acc[0],
-            'val_best_raw_acc': best_val_acc,
-            'val_crop_acc': aux_acc[0],
-            'val_drop_acc': aux_acc[0],
+            f'{val_str}_loss': epoch_loss,
+            f'{val_str}_raw_acc': epoch_acc[0],
+            f'{val_str}_best_raw_acc': best_val_acc,
+            f'{val_str}_crop_acc': aux_acc[0],
+            f'{val_str}_drop_acc': aux_acc[0],
             'epoch': epoch,
-            'val_time': total_time
+            f'{val_str}_time': total_time
         })
 
     # if aux_acc[0] > best_acc:
@@ -538,14 +551,23 @@ def accuracy(output, target, topk=(1,)):
 if __name__ == '__main__':
     class Args:
         def __init__(self):
-            self.seed = 0
-            self.gpu_id = 0
-            self.logdir = 'logs'
+            self.seed = 2
+            self.gpu_id = 1
+            self.epochs = 100
+            self.logdir = 'logs/planes/test_delete_me'
             self.dataset = 'planes'
-            self.aug_json = None
-            self.aug_sample_ratio = None
-            self.limit_aug_per_image = None
+            self.learning_rate = 0.001
+            self.batch_size = 10
+            self.weight_decay = 1e-5
             self.train_sample_ratio = 1.0
+            self.aug_json = "/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_blip_diffusion_v0-4x.json"
+            self.aug_sample_ratio = 0.5
+            self.limit_aug_per_image = None
+            self.special_aug = None
+            self.stop_aug_after_epoch = 100
+            self.use_target_soft_cross_entropy = 0
+            self.dont_use_wsdan = False
+            self.use_cutmix = False
 
 
     """
@@ -557,23 +579,7 @@ if __name__ == '__main__':
     if DEBUG:
         DONT_WANDB = True
         args = Args()
-        args.seed = 2
-        args.gpu_id = 0
-        args.epochs = 100
-        args.logdir = 'logs/planes/test_delete_me'
-        args.dataset = 'planes'
-        args.learning_rate = 0.001
-        args.batch_size = 10
-        args.weight_decay = 1e-5
-        args.train_sample_ratio = 1.0
-        args.aug_json = "/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_blip_diffusion_v0-4x.json"
-        args.aug_sample_ratio = 0.5
-        args.limit_aug_per_image = None
-        args.special_aug = None
-        args.stop_aug_after_epoch = 100
-        args.use_target_soft_cross_entropy = True
-        args.dont_use_wsdan = False
-        args.use_cutmix = False
+
 
     main()
 

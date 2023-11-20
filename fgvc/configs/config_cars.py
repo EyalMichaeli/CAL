@@ -56,20 +56,21 @@ nohup python train.py \
     
 # run augmented - SD (txt2img)
 nohup python train.py \
-    --gpu_id 1 \
-    --seed 1 \
+    --gpu_id 3 \
+    --seed 2 \
     --train_sample_ratio 1.0 \
-    --logdir logs/cars/aug-SD-XL-clip_filtering-txt2sentance-SDEdit \
+    --logdir logs/cars/aug-SD-XL-clip_filtering-txt2sentance-sce \
     --dataset cars \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/cars/sd_xl_SDEdit/sd_xl_SDEdit_None_v4-text2sentance_prompts-SDEdit_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_SDEdit_strength_0.5_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/cars/sd_xl/sd_xl_None_v3-SD-XL-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_seed_0_images_lpips_filter_None_None_clip_filtering_true.json \
     --aug_sample_ratio 0.5 \
     --stop_aug_after_epoch 160 \
+    --use_target_soft_cross_entropy \
     > nohup_outputs/cars/aug.log 2>&1 &
 
 
 # run augmented - controlNet
 nohup python train.py \
-    --gpu_id 1 \
+    --gpu_id 3 \
     --seed 2 \
     --train_sample_ratio 1.0 \
     --logdir logs/cars/aug-controlNet-edges-120-200-txt2sentance-clip_filtering-sce \
@@ -77,7 +78,7 @@ nohup python train.py \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/cars/sd_v1.5/sd_v1.5_canny_v3-SD-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_low_120_high_200_seed_0_images_lpips_filter_None_None_clip_filtering_true.json \
     --aug_sample_ratio 0.5 \
     --stop_aug_after_epoch 160 \
-    --
+    --use_target_soft_cross_entropy \
     > nohup_outputs/cars/aug.log 2>&1 &
 
     
