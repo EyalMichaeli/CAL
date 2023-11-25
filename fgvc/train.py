@@ -58,6 +58,10 @@ elif args.dataset == 'cars':
     import configs.config_cars as config
 elif args.dataset == 'dtd':
     import configs.config_dtd as config
+elif args.dataset == 'arch_dataset':
+    import configs.config_arch_dataset as config
+elif args.dataset == 'cars2':
+    import configs.config_cars2 as config
 else:
     raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
@@ -115,7 +119,7 @@ def main():
         config.batch_size = args.batch_size if args.batch_size else config.batch_size
 
         if not DONT_WANDB:
-            wandb.init(project=f"CAL-aug-exp-{args.dataset}", name=Path(config.save_dir).name)
+            wandb.init(project=f"CAL-aug-exp-new_datasets", name=Path(config.save_dir).name)
 
         args.net = config.net
         args.image_size = config.image_size

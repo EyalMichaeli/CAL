@@ -5,6 +5,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 from util import get_transform
 
+
 DATAPATH = './CUB_200_2011'
 image_path = {}
 image_label = {}

@@ -1,17 +1,18 @@
 #!/bin/bash
 
 
-dataset="dtd"
+dataset="arch_dataset"
 # Define the hyperparameter values
 batch_sizes=("4" "8" "16")
+# batch_sizes=("16")
 # learning_rates=("0.0001" "0.001" "0.01" "0.1")
 learning_rates=("0.0001" "0.001" "0.01")
 weight_decays=("0.00001" "0.0001" "0.001")
 
-start_from_last_used_hyperparameters=true
-last_used_batch_size="16"
-last_used_lr="0.001"
-last_used_wd="0.0001" 
+start_from_last_used_hyperparameters=false
+last_used_batch_size="4"
+last_used_lr="0.0001"
+last_used_wd="0.00001" 
 
 
 # if start_from_last_used_hyperparameters is true, it will set is_training to false, and only when the combination of last used hyperparameters is found, 
@@ -56,4 +57,4 @@ for batch_size in "${batch_sizes[@]}"; do
     done
 done
 
-# run with nohup trainings_scripts/hparam_search.sh
+# run with nohup trainings_scripts/hparam_search.sh > nohup_hparam.log 2>&1 &

@@ -31,12 +31,12 @@ do
                 --seed $seed \
                 --train_sample_ratio $train_sample_ratio \
                 --epochs $epochs \
-                --logdir logs/$dataset/base_cutmix_and_classic \
+                --logdir logs/$dataset/base \
                 --learning_rate $learning_rate \
                 --weight_decay $weight_decay \
                 --batch_size $batch_size \
                 --special_aug $special_aug \
-                --dataset $dataset \
+                --dataset $dataset 
             wait # Wait for the previous training process to finish before starting the next one
         done
     done

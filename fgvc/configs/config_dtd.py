@@ -41,8 +41,8 @@ nohup python train.py \
     
 # run augmented - controlNet
 nohup python train.py \
-    --gpu_id 2 \
-    --seed 1 \
+    --gpu_id 0 \
+    --seed 4 \
     --train_sample_ratio 1.0 \
     --logdir logs/dtd/aug-controlNet-edges-120-200-captions_prompts-clip_filtering\
     --dataset dtd \
@@ -53,25 +53,13 @@ nohup python train.py \
     
 # run augmented: SD (txt2img)
 nohup python train.py \
-    --gpu_id 2 \
-    --seed 1 \
+    --gpu_id 0 \
+    --seed 4 \
     --train_sample_ratio 1.0 \
-    --logdir logs/dtd/aug-SD-xl-captions_prompts-clip_filtering\
+    --logdir logs/dtd/aug-SD-XL-captions_prompts-clip_filtering\
     --dataset dtd \
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/dtd/sd_xl/sd_xl_None_v1-prompt_is_caption_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
     --aug_sample_ratio 0.1 \
-    > nohup_outputs/dtd/aug.log 2>&1 &
-
-
-# run augmented 
-nohup python train.py \
-    --gpu_id 0 \
-    --seed 2 \
-    --train_sample_ratio 1.0 \
-    --logdir logs/dtd/aug-merged_ip2p-v10-controlnet-v3\
-    --dataset dtd \
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/dtd/merged_ip2p-v10-controlnet-v3.json \
-    --aug_sample_ratio 0.4 \
     > nohup_outputs/dtd/aug.log 2>&1 &
     
     
