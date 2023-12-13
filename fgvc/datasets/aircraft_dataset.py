@@ -10,7 +10,6 @@ import warnings
 from PIL import Image
 import numpy as np
 from torch.utils.data import Dataset
-from util import get_transform
 from torchvision.datasets import FGVCAircraft
 
 

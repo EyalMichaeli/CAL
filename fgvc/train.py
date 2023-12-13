@@ -16,7 +16,7 @@ import argparse
 import wandb
 
 from models import WSDAN_CAL
-from util import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment
+from util import CenterLoss, AverageMeter, TopKAccuracyMetric, ModelCheckpoint, batch_augment, MeanClassAccuracyMetric, get_a_plot_of_num_samples_per_class_vs_class_accuracy
 from datasets import get_datasets
 
 
@@ -60,8 +60,8 @@ elif args.dataset == 'dtd':
     import configs.config_dtd as config
 elif args.dataset == 'arch_dataset':
     import configs.config_arch_dataset as config
-elif args.dataset == 'cars2':
-    import configs.config_cars2 as config
+elif args.dataset == 'compcars':
+    import configs.config_compcars as config
 else:
     raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
@@ -125,6 +125,7 @@ def main():
         args.image_size = config.image_size
         args.num_attentions = config.num_attentions
         args.beta = config.beta
+        args.logdir = Path(args.logdir).parent.name + "/" + Path(args.logdir).name
         if not args.learning_rate:
             args.learning_rate = config.learning_rate
         if not args.batch_size:
@@ -162,6 +163,10 @@ def main():
                                                                 special_aug=args.special_aug, use_cutmix=args.use_cutmix)
 
         num_classes = train_dataset.num_classes
+        global mean_class_acc
+        mean_class_acc = MeanClassAccuracyMetric(num_classes) if args.dataset in ["compcars"] else None
+        if mean_class_acc:
+            logging.info(f"Using mean class accuracy metric")
 
         ##################################
         # Initialize model
@@ -221,9 +226,7 @@ def main():
 
         logging.info('Network weights save to {}'.format(config.save_dir))
 
-        ##################################
-        # Use cuda
-        ##################################
+
         net.cuda()
 
         learning_rate = config.learning_rate
@@ -232,10 +235,10 @@ def main():
 
         train_loader = DataLoader(train_dataset, batch_size=config.batch_size,
                                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=True)
-        validate_loader = DataLoader(validate_dataset, batch_size=config.batch_size * 4,
+        validate_loader = DataLoader(validate_dataset, batch_size=config.batch_size,
                                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False)
-        test_loader = DataLoader(test_dataset, batch_size=config.batch_size * 4, 
-                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False)
+        test_loader = DataLoader(test_dataset, batch_size=config.batch_size, 
+                                 num_workers=config.workers, pin_memory=True, drop_last=True, shuffle=False) if test_dataset else None
 
         callback_monitor = 'val_{}'.format(raw_metric.name)
         callback = ModelCheckpoint(savepath=os.path.join(config.save_dir, config.model_name),
@@ -271,6 +274,8 @@ def main():
                 feature_center=feature_center,
                 optimizer=optimizer,
                 pbar=pbar)
+            # plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(train_dataset, net, "cuda", output_folder=f"{config.save_dir}/plots/train", epoch=epoch)
+            # wandb.log({"train_num_samples_per_class_vs_class_accuracy": wandb.Image(plot)})
 
             if (epoch) % 5 == 0 or epoch == config.epochs - 1:
                 validate(logs=logs,
@@ -279,12 +284,18 @@ def main():
                         pbar=pbar,
                         epoch=epoch,
                         is_test=False)
-                validate(logs=logs,
-                        data_loader=test_loader,
-                        net=net,
-                        pbar=pbar,
-                        epoch=epoch,
-                        is_test=True)
+                # plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(validate_dataset, net, "cuda", output_folder=f"{config.save_dir}/plots/val", epoch=epoch)
+                # wandb.log({"val_num_samples_per_class_vs_class_accuracy": wandb.Image(plot)})
+
+                if test_loader:
+                    validate(logs=logs,
+                            data_loader=test_loader,
+                            net=net,
+                            pbar=pbar,
+                            epoch=epoch,
+                            is_test=True)
+                    # plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(test_dataset, net, "cuda", output_folder=f"{config.save_dir}/plots/test", epoch=epoch)
+                    # wandb.log({"test_num_samples_per_class_vs_class_accuracy": wandb.Image(plot)})
 
             callback.on_epoch_end(logs, net, feature_center=feature_center)
             pbar.close()
@@ -322,12 +333,17 @@ def train(**kwargs):
     raw_metric.reset()
     crop_metric.reset()
     drop_metric.reset()
+    if mean_class_acc:
+        mean_class_acc.reset()
 
     # begin training
     start_time = time.time()
     net.train()
     batch_len = len(data_loader)
     for i, (X, y) in tqdm(enumerate(data_loader), total=len(data_loader), unit=' batches', desc='Epoch {}/{}'.format(epoch + 1, config.epochs)):
+        if DEBUG and i > 2:
+            break
+
         float_iter = float(i) / batch_len
         adjust_learning(optimizer, epoch, float_iter)
         now_lr = optimizer.param_groups[0]['lr']
@@ -397,11 +413,15 @@ def train(**kwargs):
             epoch_raw_acc = raw_metric(y_pred_raw, y)
             epoch_crop_acc = crop_metric(y_pred_aug, y_aug)
             epoch_drop_acc = drop_metric(y_pred_aux, y_aux)
+            if mean_class_acc:
+                epoch_mean_class_acc = mean_class_acc(y_pred_raw, y)
 
     # end of this epoch
     last_batch_info = 'Loss {:.4f}, Raw Acc ({:.2f}, {:.2f}), Aug Acc ({:.2f}, {:.2f}), Aux Acc ({:.2f}, {:.2f}), lr {:.5f}'.format(
         epoch_loss, epoch_raw_acc[0], epoch_raw_acc[1],
         epoch_crop_acc[0], epoch_crop_acc[1], epoch_drop_acc[0], epoch_drop_acc[1], now_lr)
+    if mean_class_acc:
+        last_batch_info += ', Mean Class Acc {:.2f}'.format(epoch_mean_class_acc)
 
     pbar.update()
     pbar.set_postfix_str(last_batch_info)
@@ -411,6 +431,8 @@ def train(**kwargs):
     logs['train_raw_{}'.format(raw_metric.name)] = epoch_raw_acc
     logs['train_crop_{}'.format(crop_metric.name)] = epoch_crop_acc
     logs['train_drop_{}'.format(drop_metric.name)] = epoch_drop_acc
+    if mean_class_acc:
+        logs['train_mean_class_acc'] = epoch_mean_class_acc
     logs['train_info'] = last_batch_info
     end_time = time.time()
     total_time = end_time - start_time
@@ -418,7 +440,7 @@ def train(**kwargs):
 
     if not DONT_WANDB:
         # wandb
-        wandb.log({
+        dict_to_log = {
             'train_loss': epoch_loss,
             'train_raw_acc': epoch_raw_acc[0],
             'train_crop_acc': epoch_crop_acc[0],
@@ -426,7 +448,10 @@ def train(**kwargs):
             'train_lr': now_lr,
             'epoch': epoch,
             'epoch_time': total_time
-        })
+        }
+        if mean_class_acc:
+            dict_to_log['train_mean_class_acc'] = epoch_mean_class_acc
+        wandb.log(dict_to_log)
 
     # write log for this epoch
     logging.info('Train: {}'.format(last_batch_info))
@@ -450,6 +475,8 @@ def validate(**kwargs):
     loss_container.reset()
     raw_metric.reset()
     drop_metric.reset()
+    if mean_class_acc:
+        mean_class_acc.reset()
 
     # begin validation
     start_time = time.time()
@@ -457,6 +484,8 @@ def validate(**kwargs):
     logging.info('Start validating')
     with torch.no_grad():
         for i, (X, y) in tqdm(enumerate(data_loader)):
+            if DEBUG and i > 2:
+                break
             # obtain data
             X = X.cuda()
             y = y.cuda()
@@ -487,10 +516,15 @@ def validate(**kwargs):
             # metrics: top-1,5 error
             epoch_acc = raw_metric(y_pred, y)
             aux_acc = drop_metric(y_pred_aux, y)
+            if mean_class_acc:
+                epoch_mean_class_acc = mean_class_acc(y_pred, y)
 
     # end of validation
     logs[f'{val_str}_{loss_container.name}'] = epoch_loss
     logs[f'{val_str}_{raw_metric.name}'] = epoch_acc
+    if mean_class_acc:
+        logs[f'{val_str}_mean_class_acc'] = epoch_mean_class_acc
+
     end_time = time.time()
     total_time = end_time - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -505,7 +539,7 @@ def validate(**kwargs):
 
     if not DONT_WANDB:
         # wandb
-        wandb.log({
+        dict_to_log = {
             f'{val_str}_loss': epoch_loss,
             f'{val_str}_raw_acc': epoch_acc[0],
             f'{val_str}_best_raw_acc': best_val_acc,
@@ -513,15 +547,18 @@ def validate(**kwargs):
             f'{val_str}_drop_acc': aux_acc[0],
             'epoch': epoch,
             f'{val_str}_time': total_time
-        })
-
-    # if aux_acc[0] > best_acc:
-    #     best_acc = aux_acc[0]
-    #     save_model(net, logs, 'model_bestacc.pth')
+        }
+        if mean_class_acc:
+            dict_to_log[f'{val_str}_mean_class_acc'] = epoch_mean_class_acc
+        
+        wandb.log(dict_to_log)
 
     # if epoch % 10 == 0:
     #     save_model(net, logs, 'model_epoch%d.pth' % epoch)
 
+    if epoch > 20 and best_val_acc < 20:
+        logging.info("Validation accuracy is too low, stopping training")
+        exit()
 
     batch_info = 'Val Loss {:.4f}, Val Acc ({:.2f}, {:.2f}), Val Aux Acc ({:.2f}, {:.2f}), Best {:.2f}'.format(
         epoch_loss, epoch_acc[0], epoch_acc[1], aux_acc[0], aux_acc[1], best_val_acc)
@@ -555,16 +592,17 @@ def accuracy(output, target, topk=(1,)):
 if __name__ == '__main__':
     class Args:
         def __init__(self):
+            dataset = "compcars"
             self.seed = 2
             self.gpu_id = 1
             self.epochs = 100
-            self.logdir = 'logs/planes/test_delete_me'
-            self.dataset = 'planes'
+            self.logdir = f'logs/{dataset}/test_delete_me'
+            self.dataset = dataset
             self.learning_rate = 0.001
             self.batch_size = 10
             self.weight_decay = 1e-5
             self.train_sample_ratio = 1.0
-            self.aug_json = "/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_blip_diffusion_v0-4x.json"
+            self.aug_json = None # "/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/ip2p/merged_blip_diffusion_v0-4x.json"
             self.aug_sample_ratio = 0.5
             self.limit_aug_per_image = None
             self.special_aug = None
@@ -572,6 +610,7 @@ if __name__ == '__main__':
             self.use_target_soft_cross_entropy = 0
             self.dont_use_wsdan = False
             self.use_cutmix = False
+            self.use_target_soft_cross_entropy = False
 
 
     """
@@ -581,9 +620,22 @@ if __name__ == '__main__':
     DONT_WANDB = False
     DEBUG = 0
     if DEBUG:
+        # pass CUDA_LAUNCH_BLOCKING=1 for debugging
+        os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
         DONT_WANDB = True
         args = Args()
 
 
     main()
 
+
+"""
+# check what user started a process in ubuntu terminal, given a pid: 
+ps -o user= -p 3183005
+
+# get parent command pid in ubuntu: 
+ps -o ppid= -p 574343
+
+# find what was the command that started a pid: 
+ps -o cmd= -p 266956
+"""

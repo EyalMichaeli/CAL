@@ -1,12 +1,17 @@
 #!/bin/bash
 
+GPU_ID="0"  # IMPORTANT: change this to the GPU you want to use
 
-dataset="arch_dataset"
+dataset="compcars"
 # Define the hyperparameter values
-batch_sizes=("4" "8" "16")
+# batch_sizes=("4" "8" "16")
 # batch_sizes=("16")
+# batch_sizes=("8")
+batch_sizes=("16")
+
 # learning_rates=("0.0001" "0.001" "0.01" "0.1")
-learning_rates=("0.0001" "0.001" "0.01")
+# learning_rates=("0.0001" "0.001" "0.01")
+learning_rates=("0.0001" "0.001")
 weight_decays=("0.00001" "0.0001" "0.001")
 
 start_from_last_used_hyperparameters=false
@@ -40,7 +45,7 @@ for batch_size in "${batch_sizes[@]}"; do
             echo "starting training..."
             ####
             nohup python train.py \
-                --gpu_id 0 \
+                --gpu_id "$GPU_ID" \
                 --seed 1 \
                 --train_sample_ratio 1.0 \
                 --epochs 120 \

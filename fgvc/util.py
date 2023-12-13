@@ -1,10 +1,18 @@
 import logging
+from pathlib import Path
+from matplotlib import pyplot as plt
 import torch
 import random
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
+import copy
+import logging
+
+from tqdm import tqdm
+
+# from datasets.compcars_dataset import CompCars
 
 
 ##############################################
@@ -66,6 +74,83 @@ class TopKAccuracyMetric(Metric):
         return self.corrects * 100. / self.num_samples
 
 
+class MeanClassAccuracyMetric:
+    def __init__(self, num_classes):
+        self.name = 'mean_class_accuracy'
+        self.num_classes = num_classes
+        self.reset()
+    
+    def reset(self):
+        self.corrects = np.zeros(self.num_classes)
+        self.counts = np.zeros(self.num_classes)
+    
+    def __call__(self, output, target):
+        """Computes the mean class accuracy"""
+        _, pred = output.max(1)  # Get the index of the max log-probability
+        for i in range(self.num_classes):  # Loop over each class
+            class_mask = (target == i)
+            class_corrects = pred[class_mask].eq(target[class_mask]).sum()
+            self.corrects[i] += class_corrects.item()
+            self.counts[i] += class_mask.sum().item()
+        
+        accuracies = self.corrects / self.counts
+
+        # Handle division by zero in case there are no samples for a class
+        accuracies = np.nan_to_num(accuracies)
+
+        return accuracies.mean() * 100.
+
+
+def get_a_plot_of_num_samples_per_class_vs_class_accuracy(dataset, model, device, output_folder, epoch, batch_size=16):
+    """Plot the number of samples per class vs. class accuracy"""
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
+    logging.info(f"Plotting the number of samples per class vs. class accuracy, output: {str(output_folder)}")
+    model.eval()
+    num_samples_per_class = []
+    class_accuracies = []
+
+    with torch.no_grad():
+        for i in tqdm(range(dataset.num_classes)):
+            # create a copy of the dataset
+            dataset_copy = copy.deepcopy(dataset)
+            # filter out all samples that are not from class i
+            # get indexes to keep
+            indexes_to_keep = [j for j, label in enumerate(dataset_copy._labels) if label == i]
+            # filter out all samples that are not from class i
+            dataset_copy._image_files = [dataset_copy._image_files[j] for j in indexes_to_keep]
+            dataset_copy._labels = [dataset_copy._labels[j] for j in indexes_to_keep]
+            # create a dataloader for the filtered dataset
+            dataloader = torch.utils.data.DataLoader(dataset_copy, batch_size=batch_size, shuffle=False, num_workers=4)
+            # get the preds
+            preds = []
+            for batch in dataloader:
+                images, labels = batch
+                images = images.to(device)
+                labels = labels.to(device)
+                outputs = model(images)
+                _, pred = outputs[0].max(1)
+                preds.append(pred.cpu().numpy())
+            preds = np.concatenate(preds)
+            # calculate the accuracy
+            accuracy = (preds == i).sum() / len(preds)
+            # save the results
+            num_samples_per_class.append(len(dataset_copy))
+            class_accuracies.append(accuracy)
+
+    # plot the results
+    fig, ax1 = plt.subplots()
+    ax1.set_xlabel('Number of samples per class')
+    ax1.set_ylabel('Class accuracy', color='tab:blue')
+    ax1.plot(num_samples_per_class, class_accuracies, color='tab:blue')
+    ax1.tick_params(axis='y', labelcolor='tab:blue')
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+    ax2.set_ylabel('Number of samples per class', color='tab:red')  # we already handled the x-label with ax1
+    ax2.plot(num_samples_per_class, num_samples_per_class, color='tab:red')
+    ax2.tick_params(axis='y', labelcolor='tab:red')
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    plt.savefig(output_folder + f'/num_samples_per_class_vs_class_accuracy_epoch{epoch}.png')
+    return fig
+    
 
 ##################################
 # Callback

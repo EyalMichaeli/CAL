@@ -1,25 +1,21 @@
 """ Stanford Cars (Car) Dataset """
 import json
 import logging
-import os
 from pathlib import Path
-import pdb
 import random
 from typing import Callable, Optional
 import warnings
 from PIL import Image
 import numpy as np
-from scipy.io import loadmat
-from torch.utils.data import Dataset
-from util import get_transform
 from torchvision.datasets import StanfordCars
 
 
 class Cars(StanfordCars):
     def __init__(self, root: str = "/mnt/raid/home/eyal_michaeli/datasets/", split: str = "train", transform: Optional[Callable] = None, target_transform: Optional[Callable] = None, 
                  download: bool = False, train_sample_ratio: float = 1.0, aug_json: str = None, aug_sample_ratio: float = None, limit_aug_per_image: int = None):
-        super().__init__(root=root, split="train" if split =="train" else "test", transform=transform, target_transform=target_transform, download=download)
-        assert split in ['train', 'val', 'test']
+        split = 'test' if split == 'val' else split  # val is the same as test
+        super().__init__(root=root, split=split, transform=transform, target_transform=target_transform, download=download)
+        assert split in ['train', 'test']
 
         self.is_train = "train" in split
         self.original_data_length = len(self._samples)
