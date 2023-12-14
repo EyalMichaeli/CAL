@@ -283,7 +283,8 @@ def main():
                         net=net,
                         pbar=pbar,
                         epoch=epoch,
-                        is_test=False)
+                        is_test=False, 
+                        output_folder=f"{config.save_dir}/plots/val")
                 # plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(validate_dataset, net, "cuda", output_folder=f"{config.save_dir}/plots/val", epoch=epoch)
                 # wandb.log({"val_num_samples_per_class_vs_class_accuracy": wandb.Image(plot)})
 
@@ -293,7 +294,8 @@ def main():
                             net=net,
                             pbar=pbar,
                             epoch=epoch,
-                            is_test=True)
+                            is_test=True,
+                            output_folder=f"{config.save_dir}/plots/test")
                     # plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(test_dataset, net, "cuda", output_folder=f"{config.save_dir}/plots/test", epoch=epoch)
                     # wandb.log({"test_num_samples_per_class_vs_class_accuracy": wandb.Image(plot)})
 
@@ -341,7 +343,7 @@ def train(**kwargs):
     net.train()
     batch_len = len(data_loader)
     for i, (X, y) in tqdm(enumerate(data_loader), total=len(data_loader), unit=' batches', desc='Epoch {}/{}'.format(epoch + 1, config.epochs)):
-        if DEBUG and i > 2:
+        if DEBUG and i > 50:
             break
 
         float_iter = float(i) / batch_len
@@ -469,6 +471,8 @@ def validate(**kwargs):
     net = kwargs['net']
     pbar = kwargs['pbar']
     is_test = kwargs['is_test']
+    output_folder = kwargs['output_folder']
+
     val_str = 'test' if is_test else 'val'
 
     # metrics initialization
@@ -482,9 +486,10 @@ def validate(**kwargs):
     start_time = time.time()
     net.eval()
     logging.info('Start validating')
+    class_to_num_samples_num_corrects_dict = {}  # will be the length of the num of classes. will be {class: [num_samples, num_corrects]}
     with torch.no_grad():
         for i, (X, y) in tqdm(enumerate(data_loader)):
-            if DEBUG and i > 2:
+            if DEBUG and i > 100:
                 break
             # obtain data
             X = X.cuda()
@@ -494,7 +499,17 @@ def validate(**kwargs):
             # Raw Image
             ##################################
             y_pred_raw, y_pred_aux, _, attention_map = net(X)
-
+            
+            # update class_to_num_samples_num_corrects
+            preds = torch.argmax(y_pred_raw, dim=1)
+            for label, pred in zip(y, preds):
+                label_item = label.item()
+                pred_item = pred.item()
+                if label_item not in class_to_num_samples_num_corrects_dict:
+                    class_to_num_samples_num_corrects_dict[label_item] = [0, 0]
+                class_to_num_samples_num_corrects_dict[label_item][0] += 1
+                class_to_num_samples_num_corrects_dict[label_item][1] += (pred_item == label_item)
+            
             crop_images3 = batch_augment(X, attention_map, mode='crop', theta=0.1, padding_ratio=0.05)
             y_pred_crop3, y_pred_aux_crop3, _, _ = net(crop_images3)
 
@@ -537,8 +552,19 @@ def validate(**kwargs):
         best_val_acc = epoch_acc[0]
         save_model(net, logs, 'model_bestacc.pth')
 
+    # get the acc per class
+    class_to_acc = {}
+    for class_id, (num_samples, num_corrects) in class_to_num_samples_num_corrects_dict.items():
+        class_to_acc[class_id] = num_corrects / max(num_samples, 1)  # to avoid division by zero
+    
+    class_to_num_samples = {class_id: num_samples for class_id, (num_samples, _) in class_to_num_samples_num_corrects_dict.items()}
+
+    # plot the acc per class
+    plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(class_to_num_samples, class_to_acc, epoch, output_folder)
+
     if not DONT_WANDB:
         # wandb
+        wandb.log({f"{val_str}_num_samples_per_class_vs_class_accuracy_epoch_{epoch}": wandb.Image(plot)})
         dict_to_log = {
             f'{val_str}_loss': epoch_loss,
             f'{val_str}_raw_acc': epoch_acc[0],
@@ -556,7 +582,7 @@ def validate(**kwargs):
     # if epoch % 10 == 0:
     #     save_model(net, logs, 'model_epoch%d.pth' % epoch)
 
-    if epoch > 20 and best_val_acc < 20:
+    if epoch > 30 and best_val_acc < 10:
         logging.info("Validation accuracy is too low, stopping training")
         exit()
 
@@ -570,8 +596,8 @@ def validate(**kwargs):
 
     logging.info('')
 
-def save_model(net, logs, ckpt_name):
-    torch.save({'logs': logs, 'state_dict': net.state_dict()}, config.save_dir + '/model_bestacc.pth')
+def save_model(net, logs, name):
+    torch.save({'logs': logs, 'state_dict': net.state_dict()}, config.save_dir + f'/{name}')
 
 def accuracy(output, target, topk=(1,)):
     """Computes the precision@k for the specified values of k"""
@@ -593,8 +619,8 @@ if __name__ == '__main__':
     class Args:
         def __init__(self):
             dataset = "compcars"
-            self.seed = 2
-            self.gpu_id = 1
+            self.seed = 1
+            self.gpu_id = 2
             self.epochs = 100
             self.logdir = f'logs/{dataset}/test_delete_me'
             self.dataset = dataset
@@ -631,7 +657,7 @@ if __name__ == '__main__':
 
 """
 # check what user started a process in ubuntu terminal, given a pid: 
-ps -o user= -p 3183005
+ps -o user= -p 46624
 
 # get parent command pid in ubuntu: 
 ps -o ppid= -p 574343

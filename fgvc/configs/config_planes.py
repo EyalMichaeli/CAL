@@ -37,7 +37,6 @@ nohup python train.py \
     --logdir logs/planes/base_no_wsdan_with_classic-repeat_twice \
     --dataset planes \
     --special_aug classic \
-    --dont_use_wsdan \
     > nohup_outputs/planes/base.log 2>&1 &
 
 

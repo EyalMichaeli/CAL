@@ -34,7 +34,7 @@ ckpt = False
 
 # train base 
 nohup python train.py \
-    --gpu_id 0 \
+    --gpu_id 1 \
     --seed 1 \
     --train_sample_ratio 1.0 \
     --logdir logs/compcars/base \
@@ -104,12 +104,12 @@ nohup python train.py \
 # v0: 
 
 # controlNet
-# v0: canny 120-200. captions as prompts. CLIP filtering. 2x.
+# v0: canny 120-200. txt2sentance as prompts. CLIP + semantic filtering. 2x.
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5/canny/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json \
 
 # Stable diffusion:
-# v0: SD XL SDEdit (strength = 0.5), txt2sentance as prompts, CLIP filtering. 2x.
-    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/None/None_txt2sentence_v1_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_SDEdit_strength_0.5_seed_0_images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json \
+# v0: SD XL SDEdit (strength = 0.5), txt2sentance as prompts, CLIP + semantic filtering. 2x.
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_xl_SDEdit_strength_0.5/None/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json \
     
 
 #########

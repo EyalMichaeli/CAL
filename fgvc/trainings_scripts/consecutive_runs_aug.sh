@@ -5,12 +5,12 @@
 dataset="compcars"
 gpu_id="1"
 
-# aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5/canny/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
-# run_name="aug-controlNet-edges-120-200-txt2sentance_per_class-clip_filtering"
+aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5/canny/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
+run_name="aug-controlNet-edges-120-200-txt2sentance-clip_semantic_filtering"
 # aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5/canny/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
 # run_name="aug-controlNet-SDEdit_0.95-edges-120-200-txt2sentance_per_class-clip_filtering"
-aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_xl_SDEdit_strength_0.5/None/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
-run_name="aug-SD-XL-SDEdit_0.5-txt2sentance_per_class-clip_filtering"
+# aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_xl_SDEdit_strength_0.5/None/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
+# run_name="aug-SD-XL-SDEdit_0.5-txt2sentance_per_class-clip_filtering"
 # aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5_SDEdit_strength_0.9/None/txt2sentence-per_class/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
 # run_name="aug-SD-1.5-SDEdit_0.9-txt2sentance_per_class-clip_filtering"
 
