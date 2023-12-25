@@ -124,7 +124,7 @@ def get_a_plot_of_num_samples_per_class_vs_class_accuracy(num_samples_per_class:
     # ax2.plot(num_samples_per_class, num_samples_per_class, color='tab:red')
     # # no need for the second axis y ticks, turn them off: TODO
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.savefig(output_folder + f'/num_samples_per_class_vs_class_accuracy_epoch{epoch}.png')
+    plt.savefig(output_folder + f'/num_samples_per_class_vs_class_accuracy_epoch_{epoch}.png')
     return fig
     
 

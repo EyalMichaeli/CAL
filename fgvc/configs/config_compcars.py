@@ -110,7 +110,8 @@ nohup python train.py \
 # Stable diffusion:
 # v0: SD XL SDEdit (strength = 0.5), txt2sentance as prompts, CLIP + semantic filtering. 2x.
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_xl_SDEdit_strength_0.5/None/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json \
-    
+# v1: same, with stength = 0.8:
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_xl_SDEdit_strength_0.8/None/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json \
 
 #########
 

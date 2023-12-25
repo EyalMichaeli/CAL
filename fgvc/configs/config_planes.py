@@ -32,9 +32,9 @@ ckpt = False
 # train base with all the data
 nohup python train.py \
     --gpu_id 0 \
-    --seed 3 \
+    --seed 1 \
     --train_sample_ratio 1.0 \
-    --logdir logs/planes/base_no_wsdan_with_classic-repeat_twice \
+    --logdir logs/planes/base \
     --dataset planes \
     --special_aug classic \
     > nohup_outputs/planes/base.log 2>&1 &

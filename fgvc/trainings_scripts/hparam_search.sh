@@ -2,7 +2,7 @@
 
 GPU_ID="0"  # IMPORTANT: change this to the GPU you want to use
 
-dataset="compcars"
+dataset="compcars-parts"
 # Define the hyperparameter values
 # batch_sizes=("4" "8" "16")
 # batch_sizes=("16")
@@ -62,4 +62,6 @@ for batch_size in "${batch_sizes[@]}"; do
     done
 done
 
-# run with nohup trainings_scripts/hparam_search.sh > nohup_hparam.log 2>&1 &
+"""
+nohup trainings_scripts/hparam_search.sh > nohup_hparam.log 2>&1 &
+"""

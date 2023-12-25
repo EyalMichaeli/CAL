@@ -62,6 +62,8 @@ elif args.dataset == 'arch_dataset':
     import configs.config_arch_dataset as config
 elif args.dataset == 'compcars':
     import configs.config_compcars as config
+elif args.dataset == 'compcars-parts':
+    import configs.config_compcars_parts as config
 else:
     raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
@@ -81,6 +83,7 @@ crop_metric = TopKAccuracyMetric(topk=(1, 5))
 drop_metric = TopKAccuracyMetric(topk=(1, 5))
 
 best_val_acc = 0.0
+best_test_acc = 0.0
 
 
 def init_logging(logdir):
@@ -465,6 +468,7 @@ def train(**kwargs):
 def validate(**kwargs):
     # Retrieve training configuration
     global best_val_acc
+    global best_test_acc
     epoch = kwargs['epoch']
     logs = kwargs['logs']
     data_loader = kwargs['data_loader']
@@ -548,27 +552,35 @@ def validate(**kwargs):
 
     pbar.set_postfix_str('{}, {}'.format(logs['train_info'], batch_info))
 
-    if epoch_acc[0] > best_val_acc:
-        best_val_acc = epoch_acc[0]
-        save_model(net, logs, 'model_bestacc.pth')
+    current_split_best_acc = best_test_acc if is_test else best_val_acc
+    if not is_test:
+        if epoch_acc[0] > best_val_acc:  # save best model, only in validation
+            current_split_best_acc = epoch_acc[0]
+            best_val_acc = epoch_acc[0]
+            save_model(net, logs, 'model_bestacc.pth')
 
-    # get the acc per class
-    class_to_acc = {}
-    for class_id, (num_samples, num_corrects) in class_to_num_samples_num_corrects_dict.items():
-        class_to_acc[class_id] = num_corrects / max(num_samples, 1)  # to avoid division by zero
-    
-    class_to_num_samples = {class_id: num_samples for class_id, (num_samples, _) in class_to_num_samples_num_corrects_dict.items()}
+    if is_test:
+        if epoch_acc[0] > best_test_acc:
+            current_split_best_acc = epoch_acc[0]
+            best_test_acc = epoch_acc[0]
 
-    # plot the acc per class
-    plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(class_to_num_samples, class_to_acc, epoch, output_folder)
+    if epoch % 30 == 0:
+        # get the acc per class
+        class_to_acc = {}
+        for class_id, (num_samples, num_corrects) in class_to_num_samples_num_corrects_dict.items():
+            class_to_acc[class_id] = num_corrects / max(num_samples, 1)  # to avoid division by zero
+        class_to_num_samples = {class_id: num_samples for class_id, (num_samples, _) in class_to_num_samples_num_corrects_dict.items()}
+        # plot the acc per class
+        plot = get_a_plot_of_num_samples_per_class_vs_class_accuracy(class_to_num_samples, class_to_acc, epoch, output_folder)
+        if not DONT_WANDB:
+            wandb.log({f"{val_str}_num_samples_per_class_vs_class_accuracy_epoch_{epoch}": wandb.Image(plot)})
 
     if not DONT_WANDB:
         # wandb
-        wandb.log({f"{val_str}_num_samples_per_class_vs_class_accuracy_epoch_{epoch}": wandb.Image(plot)})
         dict_to_log = {
             f'{val_str}_loss': epoch_loss,
             f'{val_str}_raw_acc': epoch_acc[0],
-            f'{val_str}_best_raw_acc': best_val_acc,
+            f'{val_str}_best_raw_acc': current_split_best_acc,
             f'{val_str}_crop_acc': aux_acc[0],
             f'{val_str}_drop_acc': aux_acc[0],
             'epoch': epoch,
@@ -586,8 +598,7 @@ def validate(**kwargs):
         logging.info("Validation accuracy is too low, stopping training")
         exit()
 
-    batch_info = 'Val Loss {:.4f}, Val Acc ({:.2f}, {:.2f}), Val Aux Acc ({:.2f}, {:.2f}), Best {:.2f}'.format(
-        epoch_loss, epoch_acc[0], epoch_acc[1], aux_acc[0], aux_acc[1], best_val_acc)
+    batch_info = f'{val_str} Loss {epoch_loss:.4f}, {val_str} Acc ({epoch_acc[0]:.2f}, {epoch_acc[1]:.2f}), {val_str} Aux Acc ({aux_acc[0]:.2f}, {aux_acc[1]:.2f}), Best {current_split_best_acc:.2f}'
     logging.info(batch_info)
 
     # write log for this epoch
@@ -618,7 +629,7 @@ def accuracy(output, target, topk=(1,)):
 if __name__ == '__main__':
     class Args:
         def __init__(self):
-            dataset = "compcars"
+            dataset = "compcars-parts"
             self.seed = 1
             self.gpu_id = 2
             self.epochs = 100
@@ -657,10 +668,10 @@ if __name__ == '__main__':
 
 """
 # check what user started a process in ubuntu terminal, given a pid: 
-ps -o user= -p 46624
+ps -o user= -p 2302576
 
 # get parent command pid in ubuntu: 
-ps -o ppid= -p 574343
+ps -o ppid= -p 2719769
 
 # find what was the command that started a pid: 
 ps -o cmd= -p 266956

@@ -27,6 +27,8 @@ def get_datasets(dataset, resize, train_sample_ratio=1.0, aug_json=None, aug_sam
         train, val, test =  ArchDataset(split='train', transform=train_transform, train_sample_ratio=train_sample_ratio, aug_json=aug_json, aug_sample_ratio=aug_sample_ratio, limit_aug_per_image=limit_aug_per_image), ArchDataset(split='val', transform=val_transform), ArchDataset(split='test', transform=val_transform)
     elif dataset == 'compcars':
         train, val, test =  CompCars(split='train', transform=train_transform, train_sample_ratio=train_sample_ratio, aug_json=aug_json, aug_sample_ratio=aug_sample_ratio, limit_aug_per_image=limit_aug_per_image), CompCars(split='val', transform=val_transform), None
+    elif dataset == 'compcars-parts':
+        train, val, test =  CompCars(split='train', transform=train_transform, train_sample_ratio=train_sample_ratio, aug_json=aug_json, aug_sample_ratio=aug_sample_ratio, limit_aug_per_image=limit_aug_per_image, dataset_type='parts'), CompCars(split='val', transform=val_transform, dataset_type='parts'), None
     else:
         raise ValueError('Unsupported dataset {}'.format(dataset))
 

@@ -2,17 +2,18 @@
 ############################################################################################################
 # Define the hyperparameter values
 # dataset="arch_dataset"
-dataset="compcars"
+# dataset="planes"
+dataset="compcars-parts"
 gpu_id="1"
 
-aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5/canny/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
-run_name="aug-controlNet-edges-120-200-txt2sentance-clip_semantic_filtering"
-# aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5/canny/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
-# run_name="aug-controlNet-SDEdit_0.95-edges-120-200-txt2sentance_per_class-clip_filtering"
-# aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_xl_SDEdit_strength_0.5/None/txt2sentence/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
-# run_name="aug-SD-XL-SDEdit_0.5-txt2sentance_per_class-clip_filtering"
+# aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl-turbo/canny/gpt-meta_class/images_lpips_filter_None_None_clip_filtering_per_class_discount_2.json"
+# run_name="aug-controlNet-sd_v1.5-edges-120-200-gpt_meta_class-clip_semantic_filtering"
+aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars-parts/sd_xl-turbo_SDEdit_strength_0.75/canny/captions/images_lpips_filter_None_None_clip_filtering_per_class_discount_2.json"
+run_name="aug-controlNet-SD_XL_TURBO-SDEdit_0.75-edges-120-200-gpt_meta_class_prompts-clip_semantic_filtering-higher_res"
+# aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars-parts/sd_xl-turbo_SDEdit_strength_0.5/None/gpt-meta_class/images_lpips_filter_None_None_clip_filtering_per_class_discount_2.json"
+# run_name="aug-SD-XL-TURBO-SDEdit_0.5-gpt_meta_class_prompts-clip_semantic_filtering"
 # aug_json="/mnt/raid/home/eyal_michaeli/datasets/aug_json_files/compcars/sd_v1.5_SDEdit_strength_0.9/None/txt2sentence-per_class/images_lpips_filter_None_None_clip_filtering_per_class_discount_1.json"
-# run_name="aug-SD-1.5-SDEdit_0.9-txt2sentance_per_class-clip_filtering"
+# run_name="aug-SD-1.5-SDEdit_0.9-txt2sentance_per_class-clip_semantic_filtering"
 
 # iterate over
 # seeds=("1" "2" "3" "4")
@@ -24,7 +25,8 @@ train_sample_ratios=("1.0")
 special_augs=("classic")
 
 # aug_sample_ratios=("0.1" "0.3" "0.5")
-aug_sample_ratios=("0.1" "0.3" "0.5")
+aug_sample_ratios=("0.1")
+# aug_sample_ratios=("0.3")
 # aug_sample_ratios=("0.5")
 
 # Run the training 

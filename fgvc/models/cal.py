@@ -225,4 +225,4 @@ class WSDAN_CAL(nn.Module):
             print(('%s, ' * (len(not_loaded_keys) - 1) + '%s') % tuple(not_loaded_keys))
 
         model_dict.update(pretrained_dict)
-        super(WSDAN, self).load_state_dict(model_dict)
+        super(WSDAN_CAL, self).load_state_dict(model_dict)
