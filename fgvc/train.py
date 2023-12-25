@@ -177,7 +177,8 @@ def main():
         logs = {}
         start_epoch = 0
         net = WSDAN_CAL(num_classes=num_classes, M=config.num_attentions, net=config.net, pretrained=True)
-
+        net = torch.compile(net)  # only if pytorch 2.0 is installed
+        
         # init model for soft target cross entropy
         if args.use_target_soft_cross_entropy:
             from utils.utils import PlanesUtils, CarsUtils
