@@ -129,7 +129,7 @@ def batch_augment(images, attention_map, mode='crop', theta=0.5, padding_ratio=0
         raise ValueError('Expected mode in [\'crop\', \'drop\'], but received unsupported augmentation method %s' % mode)
 
 class WSDAN_CAL(nn.Module):
-    def __init__(self, num_classes, M=32, net='inception_mixed_6e', pretrained=False):
+    def __init__(self, num_classes, M=32, net='resnet101', pretrained=False):
         super(WSDAN_CAL, self).__init__()
         self.num_classes = num_classes
         self.M = M

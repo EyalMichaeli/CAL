@@ -1,14 +1,14 @@
 #!/bin/bash
 
-GPU_ID="0"  # IMPORTANT: change this to the GPU you want to use
-
-dataset="compcars-parts"
+GPU_ID="2"  # IMPORTANT: change this to the GPU you want to use
+train_sample_ratio="0.25"
+epochs="50"
+dataset="cub"
 # Define the hyperparameter values
 # batch_sizes=("4" "8" "16")
 # batch_sizes=("16")
 # batch_sizes=("8")
-batch_sizes=("16")
-
+batch_sizes=("8")
 # learning_rates=("0.0001" "0.001" "0.01" "0.1")
 # learning_rates=("0.0001" "0.001" "0.01")
 learning_rates=("0.0001" "0.001")
@@ -47,8 +47,8 @@ for batch_size in "${batch_sizes[@]}"; do
             nohup python train.py \
                 --gpu_id "$GPU_ID" \
                 --seed 1 \
-                --train_sample_ratio 1.0 \
-                --epochs 120 \
+                --train_sample_ratio "$train_sample_ratio" \
+                --epochs "$epochs" \
                 --batch_size "$batch_size" \
                 --learning_rate "$lr" \
                 --weight_decay "$wd" \

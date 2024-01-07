@@ -3,13 +3,13 @@
 ############################################################################################################
 # run several with the same hparams, but diff seeds and train_sample_ratios
 # Define the hyperparameter values
-dataset="compcars-parts"
-gpu_id="1"
+dataset="cub"
+gpu_id="0"
 
 # iterate over
-# seeds=("1" "2" "3" "4")
+seeds=("1" "2" "3" "4")
 # seeds=("3" "4")
-seeds=("1" "2")
+# seeds=("1" "2")
 # seeds=("2" "3" "4")
 # seeds=("1" "2" "3")
 # seeds=("4")
@@ -30,7 +30,7 @@ do
                 --gpu_id $gpu_id \
                 --seed $seed \
                 --train_sample_ratio $train_sample_ratio \
-                --logdir logs/$dataset/base-fixed_classes_401 \
+                --logdir logs/$dataset/base \
                 --special_aug $special_aug \
                 --dataset $dataset 
             wait # Wait for the previous training process to finish before starting the next one

@@ -19,3 +19,6 @@ nohup*
 
 *.out
 ../nohup.out
+
+build/
+*.egg-info/

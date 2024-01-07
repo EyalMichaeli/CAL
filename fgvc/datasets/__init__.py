@@ -1,7 +1,7 @@
 import logging
 
 from .aircraft_dataset import Planes
-from .bird_dataset import BirdDataset
+from .cub_dataset import CUB
 from .car_dataset import Cars
 from .dtd_dataset import DTDataset
 from .arch_dataset import ArchDataset
@@ -18,7 +18,7 @@ def get_datasets(dataset, resize, train_sample_ratio=1.0, aug_json=None, aug_sam
     if dataset == 'planes':
         train, val, test = Planes(split='train', transform=train_transform, train_sample_ratio=train_sample_ratio, aug_json=aug_json, aug_sample_ratio=aug_sample_ratio, limit_aug_per_image=limit_aug_per_image), Planes(split='val', transform=val_transform), Planes(split='test', transform=val_transform)
     elif dataset == 'cub':
-        train, val, test =  BirdDataset(phase='train', resize=resize), BirdDataset(phase='val', resize=resize)
+        train, val, test =  CUB(split='train', transform=train_transform, train_sample_ratio=train_sample_ratio, aug_json=aug_json, aug_sample_ratio=aug_sample_ratio, limit_aug_per_image=limit_aug_per_image), CUB(split='val', transform=val_transform), None
     elif dataset == 'cars':
         train, val, test =  Cars(split='train', transform=train_transform, train_sample_ratio=train_sample_ratio, aug_json=aug_json, aug_sample_ratio=aug_sample_ratio, limit_aug_per_image=limit_aug_per_image), Cars(split='val', transform=val_transform), None
     elif dataset == 'dtd':

@@ -1,7 +1,7 @@
 ##################################################
 # Training Config
 ##################################################
-workers = 4                 # number of Dataloader workers
+workers = 10                 # number of Dataloader workers
 epochs = 160              # number of epochs
 batch_size = 4           # batch size
 learning_rate = 0.001        # initial learning rate
@@ -34,7 +34,7 @@ nohup python train.py \
     --gpu_id 0 \
     --seed 1 \
     --train_sample_ratio 1.0 \
-    --logdir logs/planes/base \
+    --logdir logs/planes/base-just_to_make_sure_results \
     --dataset planes \
     --special_aug classic \
     > nohup_outputs/planes/base.log 2>&1 &
@@ -123,7 +123,12 @@ new jsons:
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_v1.5/sd_v1.5_canny_v3-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_low_120_high_200_seed_0_images_lpips_filter_None_None_clip_filtering_False.json \
 # v6: same as v5. with CLIP filtering. 2x
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_v1.5/sd_v1.5_canny_v3-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_low_120_high_200_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
-
+# v7: SD-XL TURBO. edges (canny 120-200). GPT-meta_class (v1) prompts. CLIP + semantic filtering. 2x.
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl-turbo/canny/gpt-meta_class/images_lpips_filter_None_None_clip_filtering_per_class_discount_2.json \
+# v8: same as above, SD v1.5.
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_v1.5/canny/gpt-meta_class/v1-gpt-meta_class_prompts_prompt_with_sub_class-res_512-num_2-gs_7.5-num_inf_steps_50_controlnet_scale_1.0_low_120_high_200_seed_0_images_lpips_filter_None_None_clip_filtering_per_class_discount_2.json \
+# v9: same as v7, num inf steps = 2 instead of 4.
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/FGVC-Aircraft/fgvc-aircraft-2013b/aug_data/controlnet/sd_xl-turbo/canny/gpt-meta_class/v1_prompt_with_sub_class-res_768-num_2-gs_0.0-num_inf_steps_2_controlnet_scale_1.0_low_120_high_200_seed_0/clip_filtering_per_class_discount_1_semantic_filtering_aug.json \
     
 Stable diffusion:
 # v0: same pormpts used for controlnet. no lpips. 2x
@@ -142,8 +147,13 @@ Stable diffusion:
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl_SDEdit/sd_xl_SDEdit_None_v4-text2sentance_prompts-SDEdit_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_SDEdit_strength_0.5_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
 # v8: SD XL, text2sentance model, CLIP filtering. 2x. (didn't do CLIP filtering till now without SDEdit!)
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl/sd_xl_None_v3-SD-XL-text2sentance_prompts_random_prompt_prompt_with_sub_class_num_per_image_2_gs_7.5_num_inf_steps_30_seed_0_images_lpips_filter_None_None_clip_filtering_True.json \
-
+# v9: SD-XL TURBO. SDEdit (0.5). num inf steps = 4. GPT-meta_class (v1) prompts. CLIP + semantic filtering. 2x.
+    (SD XL TURBO num inf steps = 4 thought to be too strong and cause artifacts, but still results were great)
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/sd_xl-turbo_SDEdit_strength_0.5/None/gpt-meta_class/images_lpips_filter_None_None_clip_filtering_per_class_discount_2.json \
+# v10: SD-XL. GPT-meta_class (v1) prompts. CLIP + semantic filtering. 2x.
+    --aug_json /mnt/raid/home/eyal_michaeli/datasets/FGVC-Aircraft/fgvc-aircraft-2013b/aug_data/controlnet/sd_xl/None/gpt-meta_class/v1-gpt-meta_class_prompts_prompt_with_sub_class-res_768-num_2-gs_7.5-num_inf_steps_50_seed_0/clip_filtering_per_class_discount_1semantic_filtering_aug.json \
     
+
 # MERGED
 # v0: merged blip v15 + v1.0. mainly 5x. LPIPS filter 0.1-0.7
     --aug_json /mnt/raid/home/eyal_michaeli/datasets/aug_json_files/planes/merged_blip-v15_v1.0.json \

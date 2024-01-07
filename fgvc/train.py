@@ -5,7 +5,6 @@ import traceback
 import numpy as np
 import time
 import logging
-import warnings
 from tqdm import tqdm
 import torch
 import torch.nn as nn
@@ -64,6 +63,8 @@ elif args.dataset == 'compcars':
     import configs.config_compcars as config
 elif args.dataset == 'compcars-parts':
     import configs.config_compcars_parts as config
+elif args.dataset == 'cub':
+    import configs.config_cub as config
 else:
     raise ValueError('Unsupported dataset {}'.format(args.dataset))
 
@@ -105,6 +106,7 @@ def init_logging(logdir):
     fh = logging.FileHandler(log_file, mode='w')
     fh.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
     logging.getLogger().addHandler(fh)
+    logging.info(f"Logging to {log_file}")
     return logdir
 
 
@@ -630,9 +632,9 @@ def accuracy(output, target, topk=(1,)):
 if __name__ == '__main__':
     class Args:
         def __init__(self):
-            dataset = "compcars-parts"
+            dataset = "cub"
             self.seed = 1
-            self.gpu_id = 2
+            self.gpu_id = 0
             self.epochs = 100
             self.logdir = f'logs/{dataset}/test_delete_me'
             self.dataset = dataset
@@ -656,7 +658,7 @@ if __name__ == '__main__':
 
     """
     DONT_WANDB = False
-    DEBUG = 0
+    DEBUG = 1
     if DEBUG:
         # pass CUDA_LAUNCH_BLOCKING=1 for debugging
         os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -669,11 +671,13 @@ if __name__ == '__main__':
 
 """
 # check what user started a process in ubuntu terminal, given a pid: 
-ps -o user= -p 2302576
+ps -o user= -p 3635020
 
 # get parent command pid in ubuntu: 
-ps -o ppid= -p 2719769
+ps -o ppid= -p 501503
 
 # find what was the command that started a pid: 
 ps -o cmd= -p 266956
-"""
+
+# create alias for watch nvidia-smi: 
+""" 
